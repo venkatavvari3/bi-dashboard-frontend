@@ -13,10 +13,12 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
+import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const API_URL = process.env.REACT_APP_API_URL || "";
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || ""; // Set this in your .env
 
 function Dashboard({ token, onLogout }) {
   const [data, setData] = useState([]);
@@ -174,6 +176,18 @@ function Login({ setToken }) {
       setError('Invalid credentials');
     }
   };
+
+  // Google Login handler
+  const onGoogleSuccess = async (credentialResponse) => {
+    try {
+      const resp = await axios.post(`${API_URL}/api/login`, { credential: credentialResponse.credential });
+      setToken(resp.data.access_token);
+      setError('');
+    } catch (e) {
+      setError('Google login failed');
+    }
+  };
+
   return (
     <Container className="mt-5" style={{ maxWidth: 400 }}>
       <h2>Login</h2>
@@ -191,7 +205,14 @@ function Login({ setToken }) {
         value={pass}
         onChange={e => setPass(e.target.value)}
       />
-      <Button onClick={login} className="w-100">Login</Button>
+      <Button onClick={login} className="w-100 mb-2">Login</Button>
+      <div className="my-2 text-center">or</div>
+      {/* Google Login Button */}
+      <GoogleLogin
+        onSuccess={onGoogleSuccess}
+        onError={() => setError("Google login failed")}
+        width="100%"
+      />
     </Container>
   );
 }
@@ -203,13 +224,13 @@ export default function App() {
     else localStorage.removeItem('token');
   }, [token]);
   return (
-    <>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <Navbar bg="dark" variant="dark">
         <Container>
           <Navbar.Brand>BI Dashboard</Navbar.Brand>
         </Container>
       </Navbar>
       {token ? <Dashboard token={token} onLogout={() => setToken('')} /> : <Login setToken={setToken} />}
-    </>
+    </GoogleOAuthProvider>
   );
 }
