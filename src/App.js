@@ -1,9 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Navbar, Button, Spinner, Alert } from 'react-bootstrap';
-import { Bar } from 'react-chartjs-2';
-import axios from 'axios';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+import React, { useState, useEffect } from "react";
+import { Container, Navbar, Button, Spinner, Alert } from "react-bootstrap";
+import { Bar } from "react-chartjs-2";
+import axios from "axios";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
 
 const API_URL = process.env.REACT_APP_API_URL || "";
 
@@ -49,11 +61,11 @@ function Dashboard({ token, onLogout }) {
   };
 
   if (loading) return <Spinner animation="border" />;
+  if (error) return <Alert variant="danger">{error}</Alert>;
 
   return (
     <Container>
       <h1 className="mt-3">Interactive Dashboard</h1>
-      {error && <Alert variant="danger">{error}</Alert>}
       <Bar data={{
         labels: data.map(r => r.label),
         datasets: [{
