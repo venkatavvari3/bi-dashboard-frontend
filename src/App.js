@@ -7,7 +7,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { jwtDecode } from "jwt-decode";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
-import { Canvg } from "canvg"; // <-- added for svg to canvas
+import { Canvg } from "canvg";
 
 const API_URL = process.env.REACT_APP_API_URL || "";
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
@@ -45,16 +45,18 @@ function useD3Chart(drawFn, data, dependencies) {
   return ref;
 }
 
-// --- Chart Drawing Functions (centered and responsive) ---
+// --- Chart Drawing Functions (97% of parent size) ---
 function drawBarChart(container, { labels, values }) {
-  const width = 250, height = 180, margin = { top: 20, right: 10, bottom: 40, left: 40 };
+  const width = (container.offsetWidth || 320) * 0.97;
+  const height = (container.offsetHeight || 200) * 0.97;
+  const margin = { top: 24, right: 16, bottom: 44, left: 48 };
   d3.select(container).selectAll("*").remove();
   const svg = d3.select(container)
     .append("svg")
-    .attr("width", "100%")
-    .attr("height", "100%")
+    .attr("width", "97%")
+    .attr("height", "97%")
     .attr("viewBox", `0 0 ${width} ${height}`)
-    .attr("preserveAspectRatio", "xMidYMid meet")
+    .attr("preserveAspectRatio", "xMinYMin meet")
     .style("display", "block")
     .style("margin", "0 auto");
 
@@ -64,10 +66,12 @@ function drawBarChart(container, { labels, values }) {
 
   g.append("g")
     .attr("transform", `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x)).selectAll("text").style("font-size", "10px");
+    .call(d3.axisBottom(x))
+    .selectAll("text").style("font-size", "11px");
   g.append("g")
     .attr("transform", `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y)).selectAll("text").style("font-size", "10px");
+    .call(d3.axisLeft(y))
+    .selectAll("text").style("font-size", "11px");
 
   g.selectAll(".bar")
     .data(values)
@@ -82,16 +86,17 @@ function drawBarChart(container, { labels, values }) {
 }
 
 function drawPieChart(container, { labels, values, colors }) {
-  const width = 250, height = 180, radius = Math.min(width, height) / 2 - 15;
+  const width = (container.offsetWidth || 320) * 0.97;
+  const height = (container.offsetHeight || 200) * 0.97;
+  const radius = Math.min(width, height) / 2 - 10;
   d3.select(container).selectAll("*").remove();
   const svg = d3.select(container)
     .append("svg")
-    .attr("width", "100%")
-    .attr("height", "100%")
+    .attr("width", "97%")
+    .attr("height", "97%")
     .attr("viewBox", `0 0 ${width} ${height}`)
     .attr("preserveAspectRatio", "xMidYMid meet")
-    .style("display", "block")
-    .style("margin", "0 auto");
+    .style("display", "block");
   const g = svg.append("g")
     .attr("transform", `translate(${width / 2},${height / 2})`);
 
@@ -112,20 +117,21 @@ function drawPieChart(container, { labels, values, colors }) {
     .text((d, i) => labels[i])
     .attr("transform", d => `translate(${arc.centroid(d)})`)
     .attr("text-anchor", "middle")
-    .attr("font-size", "9px");
+    .attr("font-size", Math.max(Math.min(width, height) / 24, 10));
 }
 
 function drawLineChart(container, { labels, values }) {
-  const width = 250, height = 180, margin = { top: 20, right: 10, bottom: 40, left: 40 };
+  const width = (container.offsetWidth || 320) * 0.97;
+  const height = (container.offsetHeight || 200) * 0.97;
+  const margin = { top: 24, right: 16, bottom: 44, left: 48 };
   d3.select(container).selectAll("*").remove();
   const svg = d3.select(container)
     .append("svg")
-    .attr("width", "100%")
-    .attr("height", "100%")
+    .attr("width", "97%")
+    .attr("height", "97%")
     .attr("viewBox", `0 0 ${width} ${height}`)
-    .attr("preserveAspectRatio", "xMidYMid meet")
-    .style("display", "block")
-    .style("margin", "0 auto");
+    .attr("preserveAspectRatio", "xMinYMin meet")
+    .style("display", "block");
 
   const x = d3.scalePoint().domain(labels).range([margin.left, width - margin.right]);
   const y = d3.scaleLinear().domain([0, d3.max(values) || 1]).nice().range([height - margin.bottom, margin.top]);
@@ -133,10 +139,12 @@ function drawLineChart(container, { labels, values }) {
 
   g.append("g")
     .attr("transform", `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x)).selectAll("text").style("font-size", "10px");
+    .call(d3.axisBottom(x))
+    .selectAll("text").style("font-size", "11px");
   g.append("g")
     .attr("transform", `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y)).selectAll("text").style("font-size", "10px");
+    .call(d3.axisLeft(y))
+    .selectAll("text").style("font-size", "11px");
 
   const line = d3.line()
     .x((_, i) => x(labels[i]))
@@ -150,16 +158,17 @@ function drawLineChart(container, { labels, values }) {
 }
 
 function drawDoughnutChart(container, { labels, values, colors }) {
-  const width = 250, height = 180, radius = Math.min(width, height) / 2 - 15;
+  const width = (container.offsetWidth || 320) * 0.97;
+  const height = (container.offsetHeight || 200) * 0.97;
+  const radius = Math.min(width, height) / 2 - 10;
   d3.select(container).selectAll("*").remove();
   const svg = d3.select(container)
     .append("svg")
-    .attr("width", "100%")
-    .attr("height", "100%")
+    .attr("width", "97%")
+    .attr("height", "97%")
     .attr("viewBox", `0 0 ${width} ${height}`)
     .attr("preserveAspectRatio", "xMidYMid meet")
-    .style("display", "block")
-    .style("margin", "0 auto");
+    .style("display", "block");
   const g = svg.append("g")
     .attr("transform", `translate(${width / 2},${height / 2})`);
 
@@ -180,7 +189,7 @@ function drawDoughnutChart(container, { labels, values, colors }) {
     .text((d, i) => labels[i])
     .attr("transform", d => `translate(${arc.centroid(d)})`)
     .attr("text-anchor", "middle")
-    .attr("font-size", "9px");
+    .attr("font-size", Math.max(Math.min(width, height) / 24, 10));
 }
 
 // SVG to PNG helper using canvg
@@ -458,36 +467,36 @@ function Dashboard({ token, onLogout, persona, loginName }) {
         </Col>
       </Row>
 
-      {/* All graphs in one row, centered and fit within columns */}
+      {/* All graphs in one row, 97% size within columns */}
       <Row>
         <Col md={3} className="mb-4">
           <Card>
-            <Card.Body style={{ minHeight: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div ref={lineRef} style={{ width: "100%", height: "180px" }}></div>
+            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+              <div ref={lineRef} style={{ width: "97%", height: "97%" }}></div>
             </Card.Body>
             <Card.Footer className="text-center">Total Revenue Over Time</Card.Footer>
           </Card>
         </Col>
         <Col md={3} className="mb-4">
           <Card>
-            <Card.Body style={{ minHeight: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div ref={barRef} style={{ width: "100%", height: "180px" }}></div>
+            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+              <div ref={barRef} style={{ width: "97%", height: "97%" }}></div>
             </Card.Body>
             <Card.Footer className="text-center">Revenue by Product</Card.Footer>
           </Card>
         </Col>
         <Col md={3} className="mb-4">
           <Card>
-            <Card.Body style={{ minHeight: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div ref={pieRef} style={{ width: "100%", height: "180px" }}></div>
+            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+              <div ref={pieRef} style={{ width: "97%", height: "97%" }}></div>
             </Card.Body>
             <Card.Footer className="text-center">Revenue by Store</Card.Footer>
           </Card>
         </Col>
         <Col md={3} className="mb-4">
           <Card>
-            <Card.Body style={{ minHeight: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div ref={doughnutRef} style={{ width: "100%", height: "180px" }}></div>
+            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+              <div ref={doughnutRef} style={{ width: "97%", height: "97%" }}></div>
             </Card.Body>
             <Card.Footer className="text-center">Units Sold by Category</Card.Footer>
           </Card>
