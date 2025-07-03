@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Container, Navbar, Button, Spinner, Alert, Table, Form, Row, Col } from "react-bootstrap";
-import { Bar } from "react-chartjs-2";
+import { Container, Navbar, Button, Spinner, Alert, Table, Form, Row, Col, Card } from "react-bootstrap";
+import { Bar, Pie, Line, Doughnut } from "react-chartjs-2";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -10,16 +10,22 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  PointElement,
+  LineElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend
 } from 'chart.js';
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(
+  CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement,
+  Title, Tooltip, Legend
+);
 
 const API_URL = process.env.REACT_APP_API_URL || "";
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || ""; // Set this in your .env
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
 function Dashboard({ token, onLogout }) {
   const [data, setData] = useState([]);
@@ -30,8 +36,11 @@ function Dashboard({ token, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Add refs for chart and table
-  const chartRef = useRef();
+  // Refs for each chart and table
+  const barRef = useRef();
+  const pieRef = useRef();
+  const lineRef = useRef();
+  const doughnutRef = useRef();
   const tableRef = useRef();
 
   // Fetch filters
@@ -69,6 +78,71 @@ function Dashboard({ token, onLogout }) {
     (selectedStore ? row.store_name === selectedStore : true)
   );
 
+  // Prepare chart data
+  // 1. Bar: Revenue per product
+  const barData = {
+    labels: [...new Set(filteredData.map(row => row.product_name))],
+    datasets: [{
+      label: "Revenue by Product",
+      data: [...new Set(filteredData.map(row => row.product_name))].map(
+        p => filteredData.filter(row => row.product_name === p).reduce((a, b) => a + Number(b.revenue), 0)
+      ),
+      backgroundColor: "rgba(54, 162, 235, 0.7)"
+    }]
+  };
+
+  // 2. Pie: Revenue by store
+  const storeNames = [...new Set(filteredData.map(row => row.store_name))];
+  const pieData = {
+    labels: storeNames,
+    datasets: [{
+      label: "Revenue by Store",
+      data: storeNames.map(
+        s => filteredData.filter(row => row.store_name === s).reduce((a, b) => a + Number(b.revenue), 0)
+      ),
+      backgroundColor: [
+        "rgba(255, 99, 132, 0.6)",
+        "rgba(255, 206, 86, 0.6)",
+        "rgba(75, 192, 192, 0.6)",
+        "rgba(153, 102, 255, 0.6)",
+        "rgba(54, 162, 235, 0.6)"
+      ]
+    }]
+  };
+
+  // 3. Line: Total revenue over time
+  const dateLabels = [...new Set(filteredData.map(row => row.date))].sort();
+  const lineData = {
+    labels: dateLabels,
+    datasets: [{
+      label: "Total Revenue Over Time",
+      data: dateLabels.map(
+        d => filteredData.filter(row => row.date === d).reduce((a, b) => a + Number(b.revenue), 0)
+      ),
+      borderColor: "rgba(54, 162, 235, 0.8)",
+      fill: false,
+      tension: 0.3
+    }]
+  };
+
+  // 4. Doughnut: Units sold by category
+  const categories = [...new Set(filteredData.map(row => row.category))];
+  const doughnutData = {
+    labels: categories,
+    datasets: [{
+      label: "Units Sold by Category",
+      data: categories.map(
+        c => filteredData.filter(row => row.category === c).reduce((a, b) => a + Number(b.units_sold), 0)
+      ),
+      backgroundColor: [
+        "rgba(255, 99, 132, 0.6)",
+        "rgba(255, 206, 86, 0.6)",
+        "rgba(54, 162, 235, 0.6)",
+        "rgba(75, 192, 192, 0.6)"
+      ]
+    }]
+  };
+
   // Export Excel: filtered table + filter info as first row
   const exportExcel = () => {
     const filterRow = {
@@ -87,13 +161,12 @@ function Dashboard({ token, onLogout }) {
     XLSX.writeFile(wb, "dashboard_sales.xlsx");
   };
 
-  // Export PDF: chart image + table (as seen) + filter info
+  // Export PDF: export 4 charts and table (as seen) + filter info
   const exportPDF = async () => {
     const doc = new jsPDF("p", "pt", "a4");
     const margin = 40;
     let y = margin;
 
-    // Add filter info
     doc.setFontSize(12);
     doc.text(
       `Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`,
@@ -102,40 +175,41 @@ function Dashboard({ token, onLogout }) {
     );
     y += 20;
 
-    // Export chart as image
-    const chartCanvas = chartRef.current.querySelector("canvas");
-    const chartImg = chartCanvas.toDataURL("image/png", 1.0);
-    doc.text("Sales Chart", margin, y);
-    y += 10;
-    doc.addImage(chartImg, "PNG", margin, y, 500, 200);
-    y += 210;
+    // Helper function to add chart image
+    const addChartToPDF = (chartRef, title) => {
+      if (chartRef.current) {
+        const chartCanvas = chartRef.current.querySelector("canvas");
+        if (chartCanvas) {
+          const chartImg = chartCanvas.toDataURL("image/png", 1.0);
+          doc.text(title, margin, y);
+          y += 10;
+          doc.addImage(chartImg, "PNG", margin, y, 250, 120);
+          y += 130;
+        }
+      }
+    };
+
+    addChartToPDF(barRef, "Revenue by Product");
+    addChartToPDF(pieRef, "Revenue by Store");
+    addChartToPDF(lineRef, "Total Revenue Over Time");
+    addChartToPDF(doughnutRef, "Units Sold by Category");
 
     // Export table as image
     const tableElement = tableRef.current;
-    const tableCanvas = await html2canvas(tableElement, { scale: 2 });
-    const tableImg = tableCanvas.toDataURL("image/png", 1.0);
+    if (tableElement) {
+      const tableCanvas = await html2canvas(tableElement, { scale: 2 });
+      const tableImg = tableCanvas.toDataURL("image/png", 1.0);
 
-    if (y + 220 > doc.internal.pageSize.getHeight()) {
-      doc.addPage();
-      y = margin;
+      if (y + 220 > doc.internal.pageSize.getHeight()) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text("Sales Table", margin, y);
+      y += 10;
+      doc.addImage(tableImg, "PNG", margin, y, 500, 200);
     }
-    doc.text("Sales Table", margin, y);
-    y += 10;
-    doc.addImage(tableImg, "PNG", margin, y, 500, 200);
 
     doc.save("dashboard_sales.pdf");
-  };
-
-  // Chart data
-  const chartData = {
-    labels: filteredData.map(row => `${row.date} - ${row.product_name}`),
-    datasets: [
-      {
-        label: "Revenue",
-        data: filteredData.map(row => Number(row.revenue)),
-        backgroundColor: "rgba(54, 162, 235, 0.6)"
-      }
-    ]
   };
 
   if (loading) return <Spinner animation="border" />;
@@ -169,9 +243,51 @@ function Dashboard({ token, onLogout }) {
         </Col>
       </Row>
 
-      <div ref={chartRef}>
-        <Bar data={chartData} />
-      </div>
+      {/* 4 Visuals */}
+      <Row>
+        <Col md={6} className="mb-4">
+          <Card>
+            <Card.Body>
+              <div ref={barRef}>
+                <Bar data={barData} options={{ plugins: { legend: { display: false } } }} />
+              </div>
+            </Card.Body>
+            <Card.Footer className="text-center">Revenue by Product</Card.Footer>
+          </Card>
+        </Col>
+        <Col md={6} className="mb-4">
+          <Card>
+            <Card.Body>
+              <div ref={pieRef}>
+                <Pie data={pieData} />
+              </div>
+            </Card.Body>
+            <Card.Footer className="text-center">Revenue by Store</Card.Footer>
+          </Card>
+        </Col>
+      </Row>
+      <Row>
+        <Col md={6} className="mb-4">
+          <Card>
+            <Card.Body>
+              <div ref={lineRef}>
+                <Line data={lineData} />
+              </div>
+            </Card.Body>
+            <Card.Footer className="text-center">Total Revenue Over Time</Card.Footer>
+          </Card>
+        </Col>
+        <Col md={6} className="mb-4">
+          <Card>
+            <Card.Body>
+              <div ref={doughnutRef}>
+                <Doughnut data={doughnutData} />
+              </div>
+            </Card.Body>
+            <Card.Footer className="text-center">Units Sold by Category</Card.Footer>
+          </Card>
+        </Col>
+      </Row>
 
       <div ref={tableRef}>
         <Table striped bordered hover size="sm" className="mt-4">
