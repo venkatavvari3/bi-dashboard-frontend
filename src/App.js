@@ -5,7 +5,7 @@ import axios from "axios";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import jwt_decode from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -388,22 +388,22 @@ export default function App() {
   const [persona, setPersona] = useState("");
   const [loginName, setLoginName] = useState("");
   useEffect(() => {
-    if (token) {
-      localStorage.setItem('token', token);
-      try {
-        const decoded = jwt_decode(token);
-        setPersona(decoded.persona || "");
-        setLoginName(decoded.sub || "");
-      } catch (e) {
-        setPersona("");
-        setLoginName("");
-      }
-    } else {
-      localStorage.removeItem('token');
+  if (token) {
+    localStorage.setItem('token', token);
+    try {
+      const decoded = jwtDecode(token);
+      setPersona(decoded.persona || "");
+      setLoginName(decoded.sub || "");
+    } catch (e) {
       setPersona("");
       setLoginName("");
     }
-  }, [token]);
+  } else {
+    localStorage.removeItem('token');
+    setPersona("");
+    setLoginName("");
+  }
+}, [token]);
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <Navbar bg="dark" variant="dark">
