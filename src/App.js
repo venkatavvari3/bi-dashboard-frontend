@@ -214,13 +214,27 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   };
 
   // --- Email Me button handler ---
-  const handleEmailMe = () => {
-    const subject = encodeURIComponent("BI Dashboard Data Request");
-    const body = encodeURIComponent(
-      `Hi,\n\nI would like to receive my dashboard data.\n\nLogged in as: ${loginName} (${persona})\n\nThank you.`
-    );
-    window.location.href = `mailto:${loginName}?subject=${subject}&body=${body}`;
-  };
+const handleEmailMe = async () => {
+  try {
+    // Option 1: Image
+    const canvas = await html2canvas(document.body);
+    const imageData = canvas.toDataURL("image/png");
+    // Option 2: PDF (uncomment if you want PDF)
+    // const pdf = new jsPDF();
+    // pdf.html(document.body, { callback: (doc) => { ... } });
+    // const pdfData = pdf.output('datauristring');
+
+    await axios.post(`${API_URL}/api/email_me`, {
+      image: imageData, // or pdfData
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    alert("Dashboard emailed!");
+  } catch (e) {
+    alert("Failed to send email");
+  }
+};
 
   if (loading) return <Spinner animation="border" />;
 
