@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Container, Navbar, Button, Spinner, Alert, Table, Form, Row, Col, Card } from "react-bootstrap";
+import { Container, Navbar, Button, Spinner, Alert, Table, Form, Row, Col, Card, Nav } from "react-bootstrap";
 import * as d3 from "d3";
 import axios from "axios";
 import * as XLSX from "xlsx";
@@ -11,6 +11,27 @@ import { Canvg } from "canvg"; // <-- added for svg to canvas
 
 const API_URL = process.env.REACT_APP_API_URL || "";
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
+
+// --- Example: add more dashboards here as components if you want ---
+function SalesDashboard(props) {
+  return <Dashboard {...props} />;
+}
+function InventoryDashboard(props) {
+  return (
+    <Container className="mt-4">
+      <h2>Inventory Dashboard (Coming Soon)</h2>
+      <p>This is a placeholder for another dashboard view. Add your charts/tables here.</p>
+    </Container>
+  );
+}
+function CustomersDashboard(props) {
+  return (
+    <Container className="mt-4">
+      <h2>Customers Dashboard (Coming Soon)</h2>
+      <p>This is a placeholder for another dashboard view. Add your charts/tables here.</p>
+    </Container>
+  );
+}
 
 function useD3Chart(drawFn, data, dependencies) {
   const ref = useRef();
@@ -540,6 +561,8 @@ export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [persona, setPersona] = useState("");
   const [loginName, setLoginName] = useState("");
+  const [selectedDashboard, setSelectedDashboard] = useState("sales");
+
   useEffect(() => {
     if (token) {
       localStorage.setItem('token', token);
@@ -557,6 +580,15 @@ export default function App() {
       setLoginName("");
     }
   }, [token]);
+
+  // Sidebar navigation
+  const dashboards = [
+    { key: "sales", label: "Sales Dashboard", component: SalesDashboard },
+    { key: "inventory", label: "Inventory Dashboard", component: InventoryDashboard },
+    { key: "customers", label: "Customers Dashboard", component: CustomersDashboard }
+  ];
+  const DashboardComponent = dashboards.find(d => d.key === selectedDashboard)?.component || SalesDashboard;
+
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <Navbar bg="dark" variant="dark">
@@ -569,9 +601,44 @@ export default function App() {
           )}
         </Container>
       </Navbar>
-      {token
-        ? <Dashboard token={token} onLogout={() => setToken('')} persona={persona} loginName={loginName} />
-        : <Login setToken={setToken} />}
+      {token ? (
+        <div style={{ display: "flex", minHeight: "100vh" }}>
+          <Nav
+            variant="pills"
+            className="flex-column p-3"
+            style={{
+              minWidth: 220,
+              borderRight: "1px solid #eee",
+              background: "#f8f9fa"
+            }}
+            activeKey={selectedDashboard}
+            onSelect={setSelectedDashboard}
+          >
+            {dashboards.map(d => (
+              <Nav.Link
+                key={d.key}
+                eventKey={d.key}
+                style={{
+                  marginBottom: 4,
+                  fontWeight: selectedDashboard === d.key ? "bold" : "normal"
+                }}
+              >
+                {d.label}
+              </Nav.Link>
+            ))}
+          </Nav>
+          <div style={{ flex: 1 }}>
+            <DashboardComponent
+              token={token}
+              onLogout={() => setToken('')}
+              persona={persona}
+              loginName={loginName}
+            />
+          </div>
+        </div>
+      ) : (
+        <Login setToken={setToken} />
+      )}
     </GoogleOAuthProvider>
   );
 }
