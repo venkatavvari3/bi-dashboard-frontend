@@ -225,6 +225,7 @@ const handleEmailMe = async () => {
     // const pdfData = pdf.output('datauristring');
 
     await axios.post(`${API_URL}/api/email_me`, {
+      message: "Here is the canvas image",
       image: imageData, // or pdfData
     }, {
       headers: { Authorization: `Bearer ${token}` }
