@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Container, Navbar, Button, Spinner, Alert, Table, Form, Row, Col } from "react-bootstrap";
 import { Bar } from "react-chartjs-2";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -28,6 +29,10 @@ function Dashboard({ token, onLogout }) {
   const [selectedStore, setSelectedStore] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Add refs for chart and table
+  const chartRef = useRef();
+  const tableRef = useRef();
 
   // Fetch filters
   useEffect(() => {
@@ -64,24 +69,60 @@ function Dashboard({ token, onLogout }) {
     (selectedStore ? row.store_name === selectedStore : true)
   );
 
-  // Export
+  // Export Excel: filtered table + filter info as first row
   const exportExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(filteredData);
+    const filterRow = {
+      Date: "",
+      Product: selectedProduct || "All",
+      Category: "",
+      Store: selectedStore || "All",
+      Customer: "",
+      "Units Sold": "",
+      Revenue: "",
+      Profit: ""
+    };
+    const ws = XLSX.utils.json_to_sheet([filterRow, ...filteredData]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Sales");
     XLSX.writeFile(wb, "dashboard_sales.xlsx");
   };
 
-  const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Sales Data", 10, 10);
-    filteredData.forEach((row, i) => {
-      doc.text(
-        `${row.date}, ${row.product_name}, ${row.category}, ${row.store_name}, ${row.customer_name}, Units: ${row.units_sold}, Revenue: ${row.revenue}, Profit: ${row.profit}`,
-        10,
-        20 + i * 10
-      );
-    });
+  // Export PDF: chart image + table (as seen) + filter info
+  const exportPDF = async () => {
+    const doc = new jsPDF("p", "pt", "a4");
+    const margin = 40;
+    let y = margin;
+
+    // Add filter info
+    doc.setFontSize(12);
+    doc.text(
+      `Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`,
+      margin,
+      y
+    );
+    y += 20;
+
+    // Export chart as image
+    const chartCanvas = chartRef.current.querySelector("canvas");
+    const chartImg = chartCanvas.toDataURL("image/png", 1.0);
+    doc.text("Sales Chart", margin, y);
+    y += 10;
+    doc.addImage(chartImg, "PNG", margin, y, 500, 200);
+    y += 210;
+
+    // Export table as image
+    const tableElement = tableRef.current;
+    const tableCanvas = await html2canvas(tableElement, { scale: 2 });
+    const tableImg = tableCanvas.toDataURL("image/png", 1.0);
+
+    if (y + 220 > doc.internal.pageSize.getHeight()) {
+      doc.addPage();
+      y = margin;
+    }
+    doc.text("Sales Table", margin, y);
+    y += 10;
+    doc.addImage(tableImg, "PNG", margin, y, 500, 200);
+
     doc.save("dashboard_sales.pdf");
   };
 
@@ -128,36 +169,40 @@ function Dashboard({ token, onLogout }) {
         </Col>
       </Row>
 
-      <Bar data={chartData} />
+      <div ref={chartRef}>
+        <Bar data={chartData} />
+      </div>
 
-      <Table striped bordered hover size="sm" className="mt-4">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Product</th>
-            <th>Category</th>
-            <th>Store</th>
-            <th>Customer</th>
-            <th>Units Sold</th>
-            <th>Revenue</th>
-            <th>Profit</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredData.map((row, idx) => (
-            <tr key={idx}>
-              <td>{row.date}</td>
-              <td>{row.product_name}</td>
-              <td>{row.category}</td>
-              <td>{row.store_name}</td>
-              <td>{row.customer_name}</td>
-              <td>{row.units_sold}</td>
-              <td>{row.revenue}</td>
-              <td>{row.profit}</td>
+      <div ref={tableRef}>
+        <Table striped bordered hover size="sm" className="mt-4">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Store</th>
+              <th>Customer</th>
+              <th>Units Sold</th>
+              <th>Revenue</th>
+              <th>Profit</th>
             </tr>
-          ))}
-        </tbody>
-      </Table>
+          </thead>
+          <tbody>
+            {filteredData.map((row, idx) => (
+              <tr key={idx}>
+                <td>{row.date}</td>
+                <td>{row.product_name}</td>
+                <td>{row.category}</td>
+                <td>{row.store_name}</td>
+                <td>{row.customer_name}</td>
+                <td>{row.units_sold}</td>
+                <td>{row.revenue}</td>
+                <td>{row.profit}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
     </Container>
   );
 }
