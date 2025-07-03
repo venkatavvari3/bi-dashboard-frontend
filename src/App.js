@@ -45,16 +45,16 @@ function useD3Chart(drawFn, data, dependencies) {
   return ref;
 }
 
-// --- Chart Drawing Functions (97% of parent size) ---
+// --- Chart Drawing Functions (99% of parent size) ---
 function drawBarChart(container, { labels, values }) {
-  const width = (container.offsetWidth || 320) * 0.97;
-  const height = (container.offsetHeight || 200) * 0.97;
+  const width = (container.offsetWidth || 320) * 0.99;
+  const height = (container.offsetHeight || 200) * 0.99;
   const margin = { top: 24, right: 16, bottom: 44, left: 48 };
   d3.select(container).selectAll("*").remove();
   const svg = d3.select(container)
     .append("svg")
-    .attr("width", "97%")
-    .attr("height", "97%")
+    .attr("width", "99%")
+    .attr("height", "99%")
     .attr("viewBox", `0 0 ${width} ${height}`)
     .attr("preserveAspectRatio", "xMinYMin meet")
     .style("display", "block")
@@ -86,14 +86,14 @@ function drawBarChart(container, { labels, values }) {
 }
 
 function drawPieChart(container, { labels, values, colors }) {
-  const width = (container.offsetWidth || 320) * 0.97;
-  const height = (container.offsetHeight || 200) * 0.97;
+  const width = (container.offsetWidth || 320) * 0.99;
+  const height = (container.offsetHeight || 200) * 0.99;
   const radius = Math.min(width, height) / 2 - 10;
   d3.select(container).selectAll("*").remove();
   const svg = d3.select(container)
     .append("svg")
-    .attr("width", "97%")
-    .attr("height", "97%")
+    .attr("width", "99%")
+    .attr("height", "99%")
     .attr("viewBox", `0 0 ${width} ${height}`)
     .attr("preserveAspectRatio", "xMidYMid meet")
     .style("display", "block");
@@ -121,14 +121,14 @@ function drawPieChart(container, { labels, values, colors }) {
 }
 
 function drawLineChart(container, { labels, values }) {
-  const width = (container.offsetWidth || 320) * 0.97;
-  const height = (container.offsetHeight || 200) * 0.97;
+  const width = (container.offsetWidth || 320) * 0.99;
+  const height = (container.offsetHeight || 200) * 0.99;
   const margin = { top: 24, right: 16, bottom: 44, left: 48 };
   d3.select(container).selectAll("*").remove();
   const svg = d3.select(container)
     .append("svg")
-    .attr("width", "97%")
-    .attr("height", "97%")
+    .attr("width", "99%")
+    .attr("height", "99%")
     .attr("viewBox", `0 0 ${width} ${height}`)
     .attr("preserveAspectRatio", "xMinYMin meet")
     .style("display", "block");
@@ -158,14 +158,14 @@ function drawLineChart(container, { labels, values }) {
 }
 
 function drawDoughnutChart(container, { labels, values, colors }) {
-  const width = (container.offsetWidth || 320) * 0.97;
-  const height = (container.offsetHeight || 200) * 0.97;
+  const width = (container.offsetWidth || 320) * 0.99;
+  const height = (container.offsetHeight || 200) * 0.99;
   const radius = Math.min(width, height) / 2 - 10;
   d3.select(container).selectAll("*").remove();
   const svg = d3.select(container)
     .append("svg")
-    .attr("width", "97%")
-    .attr("height", "97%")
+    .attr("width", "99%")
+    .attr("height", "99%")
     .attr("viewBox", `0 0 ${width} ${height}`)
     .attr("preserveAspectRatio", "xMidYMid meet")
     .style("display", "block");
@@ -467,12 +467,12 @@ function Dashboard({ token, onLogout, persona, loginName }) {
         </Col>
       </Row>
 
-      {/* All graphs in one row, 97% size within columns */}
+      {/* All graphs in one row, 99% size within columns */}
       <Row>
         <Col md={3} className="mb-4">
           <Card>
             <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-              <div ref={lineRef} style={{ width: "97%", height: "97%" }}></div>
+              <div ref={lineRef} style={{ width: "99%", height: "99%" }}></div>
             </Card.Body>
             <Card.Footer className="text-center">Total Revenue Over Time</Card.Footer>
           </Card>
@@ -480,7 +480,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
         <Col md={3} className="mb-4">
           <Card>
             <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-              <div ref={barRef} style={{ width: "97%", height: "97%" }}></div>
+              <div ref={barRef} style={{ width: "99%", height: "99%" }}></div>
             </Card.Body>
             <Card.Footer className="text-center">Revenue by Product</Card.Footer>
           </Card>
@@ -488,7 +488,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
         <Col md={3} className="mb-4">
           <Card>
             <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-              <div ref={pieRef} style={{ width: "97%", height: "97%" }}></div>
+              <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
             </Card.Body>
             <Card.Footer className="text-center">Revenue by Store</Card.Footer>
           </Card>
@@ -496,7 +496,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
         <Col md={3} className="mb-4">
           <Card>
             <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-              <div ref={doughnutRef} style={{ width: "97%", height: "97%" }}></div>
+              <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
             </Card.Body>
             <Card.Footer className="text-center">Units Sold by Category</Card.Footer>
           </Card>
