@@ -213,6 +213,15 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     doc.save("dashboard_sales.pdf");
   };
 
+  // --- Email Me button handler ---
+  const handleEmailMe = () => {
+    const subject = encodeURIComponent("BI Dashboard Data Request");
+    const body = encodeURIComponent(
+      `Hi,\n\nI would like to receive my dashboard data.\n\nLogged in as: ${loginName} (${persona})\n\nThank you.`
+    );
+    window.location.href = `mailto:${loginName}?subject=${subject}&body=${body}`;
+  };
+
   if (loading) return <Spinner animation="border" />;
 
   return (
@@ -243,6 +252,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
         <Col md={4} className="text-end">
           <Button onClick={exportExcel} className="me-2" size="sm">Export Excel</Button>
           <Button onClick={exportPDF} className="me-2" size="sm">Export PDF</Button>
+          <Button onClick={handleEmailMe} className="me-2" size="sm" variant="info">Email me</Button>
           <Button variant="outline-secondary" onClick={onLogout} size="sm">Logout</Button>
         </Col>
       </Row>
@@ -388,22 +398,22 @@ export default function App() {
   const [persona, setPersona] = useState("");
   const [loginName, setLoginName] = useState("");
   useEffect(() => {
-  if (token) {
-    localStorage.setItem('token', token);
-    try {
-      const decoded = jwtDecode(token);
-      setPersona(decoded.persona || "");
-      setLoginName(decoded.sub || "");
-    } catch (e) {
+    if (token) {
+      localStorage.setItem('token', token);
+      try {
+        const decoded = jwtDecode(token);
+        setPersona(decoded.persona || "");
+        setLoginName(decoded.sub || "");
+      } catch (e) {
+        setPersona("");
+        setLoginName("");
+      }
+    } else {
+      localStorage.removeItem('token');
       setPersona("");
       setLoginName("");
     }
-  } else {
-    localStorage.removeItem('token');
-    setPersona("");
-    setLoginName("");
-  }
-}, [token]);
+  }, [token]);
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <Navbar bg="dark" variant="dark">
