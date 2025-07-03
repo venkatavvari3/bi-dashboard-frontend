@@ -429,9 +429,9 @@ function Dashboard({ token, onLogout, persona, loginName }) {
         </Col>
       </Row>
 
-      {/* First Row: Line and Bar */}
+      {/* All graphs in one row */}
       <Row>
-        <Col md={6} className="mb-4">
+        <Col md={3} className="mb-4">
           <Card>
             <Card.Body>
               <div ref={lineRef}></div>
@@ -439,7 +439,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
             <Card.Footer className="text-center">Total Revenue Over Time</Card.Footer>
           </Card>
         </Col>
-        <Col md={6} className="mb-4">
+        <Col md={3} className="mb-4">
           <Card>
             <Card.Body>
               <div ref={barRef}></div>
@@ -447,10 +447,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
             <Card.Footer className="text-center">Revenue by Product</Card.Footer>
           </Card>
         </Col>
-      </Row>
-      {/* Second Row: Pie and Doughnut */}
-      <Row>
-        <Col md={6} className="mb-4">
+        <Col md={3} className="mb-4">
           <Card>
             <Card.Body>
               <div ref={pieRef}></div>
@@ -458,7 +455,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
             <Card.Footer className="text-center">Revenue by Store</Card.Footer>
           </Card>
         </Col>
-        <Col md={6} className="mb-4">
+        <Col md={3} className="mb-4">
           <Card>
             <Card.Body>
               <div ref={doughnutRef}></div>
