@@ -5,6 +5,7 @@ import axios from "axios";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import jwt_decode from "jwt-decode";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -381,15 +382,31 @@ function Login({ setToken }) {
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
+  const [persona, setPersona] = useState("");
   useEffect(() => {
-    if (token) localStorage.setItem('token', token);
-    else localStorage.removeItem('token');
+    if (token) {
+      localStorage.setItem('token', token);
+      try {
+        const decoded = jwt_decode(token);
+        setPersona(decoded.persona || "");
+      } catch (e) {
+        setPersona("");
+      }
+    } else {
+      localStorage.removeItem('token');
+      setPersona("");
+    }
   }, [token]);
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <Navbar bg="dark" variant="dark">
         <Container>
           <Navbar.Brand>BI Dashboard</Navbar.Brand>
+          {persona && (
+            <Navbar.Text style={{ color: "#FFD700" }}>
+              &nbsp;Persona: <b>{persona}</b>
+            </Navbar.Text>
+          )}
         </Container>
       </Navbar>
       {token ? <Dashboard token={token} onLogout={() => setToken('')} /> : <Login setToken={setToken} />}
