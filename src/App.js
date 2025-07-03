@@ -28,7 +28,7 @@ ChartJS.register(
 const API_URL = process.env.REACT_APP_API_URL || "";
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
-function Dashboard({ token, onLogout }) {
+function Dashboard({ token, onLogout, persona, loginName }) {
   const [data, setData] = useState([]);
   const [products, setProducts] = useState([]);
   const [stores, setStores] = useState([]);
@@ -218,6 +218,9 @@ function Dashboard({ token, onLogout }) {
   return (
     <Container>
       <h1 className="mt-3">Sales Dashboard</h1>
+      <div className="mb-3" style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#1a73e8' }}>
+        Logged in as: {loginName} {persona && <>({persona})</>}
+      </div>
       {error && <Alert variant="danger">{error}</Alert>}
 
       <Row className="my-3">
@@ -383,18 +386,22 @@ function Login({ setToken }) {
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [persona, setPersona] = useState("");
+  const [loginName, setLoginName] = useState("");
   useEffect(() => {
     if (token) {
       localStorage.setItem('token', token);
       try {
         const decoded = jwt_decode(token);
         setPersona(decoded.persona || "");
+        setLoginName(decoded.sub || "");
       } catch (e) {
         setPersona("");
+        setLoginName("");
       }
     } else {
       localStorage.removeItem('token');
       setPersona("");
+      setLoginName("");
     }
   }, [token]);
   return (
@@ -409,7 +416,9 @@ export default function App() {
           )}
         </Container>
       </Navbar>
-      {token ? <Dashboard token={token} onLogout={() => setToken('')} /> : <Login setToken={setToken} />}
+      {token 
+        ? <Dashboard token={token} onLogout={() => setToken('')} persona={persona} loginName={loginName} />
+        : <Login setToken={setToken} />}
     </GoogleOAuthProvider>
   );
 }
