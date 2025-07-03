@@ -348,7 +348,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
       const canvas = await html2canvas(document.body);
       const imageData = canvas.toDataURL("image/png");
       await axios.post(`${API_URL}/api/email_me`, {
-        message: "Here is the dashboard image",
+        message: "Please find attached dashboard",
         image: imageData
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -371,20 +371,34 @@ function Dashboard({ token, onLogout, persona, loginName }) {
 
       <Row className="my-3">
         <Col md={4}>
-          <Form.Select value={selectedProduct} onChange={e => setSelectedProduct(e.target.value)}>
-            <option value="">All Products</option>
-            {products.map(p => (
-              <option key={p.product_id} value={p.product_name}>{p.product_name}</option>
-            ))}
-          </Form.Select>
+          <Form.Group>
+            <Form.Label htmlFor="productDropdown"><b>Product</b></Form.Label>
+            <Form.Select
+              id="productDropdown"
+              value={selectedProduct}
+              onChange={e => setSelectedProduct(e.target.value)}
+            >
+              <option value="">All Products</option>
+              {products.map(p => (
+                <option key={p.product_id} value={p.product_name}>{p.product_name}</option>
+              ))}
+            </Form.Select>
+          </Form.Group>
         </Col>
         <Col md={4}>
-          <Form.Select value={selectedStore} onChange={e => setSelectedStore(e.target.value)}>
-            <option value="">All Stores</option>
-            {stores.map(s => (
-              <option key={s.store_id} value={s.store_name}>{s.store_name}</option>
-            ))}
-          </Form.Select>
+          <Form.Group>
+            <Form.Label htmlFor="storeDropdown"><b>Store</b></Form.Label>
+            <Form.Select
+              id="storeDropdown"
+              value={selectedStore}
+              onChange={e => setSelectedStore(e.target.value)}
+            >
+              <option value="">All Stores</option>
+              {stores.map(s => (
+                <option key={s.store_id} value={s.store_name}>{s.store_name}</option>
+              ))}
+            </Form.Select>
+          </Form.Group>
         </Col>
         <Col md={4} className="text-end">
           <Button onClick={exportExcel} className="me-2" size="sm">Export Excel</Button>
