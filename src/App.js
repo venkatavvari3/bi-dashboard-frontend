@@ -1,32 +1,136 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Container, Navbar, Button, Spinner, Alert, Table, Form, Row, Col, Card } from "react-bootstrap";
-import { Bar, Pie, Line, Doughnut } from "react-chartjs-2";
+import * as d3 from "d3";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { jwtDecode } from "jwt-decode";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  PointElement,
-  LineElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend
-} from 'chart.js';
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
-
-ChartJS.register(
-  CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement,
-  Title, Tooltip, Legend
-);
 
 const API_URL = process.env.REACT_APP_API_URL || "";
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
+
+function useD3Chart(drawFn, data, dependencies) {
+  const ref = useRef();
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.innerHTML = "";
+      drawFn(ref.current, data);
+    }
+    // eslint-disable-next-line
+  }, dependencies);
+  return ref;
+}
+
+function drawBarChart(container, { labels, values }) {
+  const width = 350, height = 200, margin = { top: 20, right: 10, bottom: 40, left: 40 };
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+  const x = d3.scaleBand().domain(labels).range([margin.left, width - margin.right]).padding(0.2);
+  const y = d3.scaleLinear().domain([0, d3.max(values)]).nice().range([height - margin.bottom, margin.top]);
+  svg.append("g")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x));
+  svg.append("g")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y));
+  svg.selectAll(".bar")
+    .data(values)
+    .enter()
+    .append("rect")
+    .attr("class", "bar")
+    .attr("x", (_, i) => x(labels[i]))
+    .attr("width", x.bandwidth())
+    .attr("y", d => y(d))
+    .attr("height", d => y(0) - y(d))
+    .attr("fill", "#36a2eb");
+}
+
+function drawPieChart(container, { labels, values, colors }) {
+  const width = 350, height = 200, radius = Math.min(width, height) / 2 - 10;
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .append("g")
+    .attr("transform", `translate(${width / 2},${height / 2})`);
+  const pie = d3.pie()(values);
+  const arc = d3.arc().innerRadius(0).outerRadius(radius);
+  svg.selectAll("path")
+    .data(pie)
+    .enter()
+    .append("path")
+    .attr("d", arc)
+    .attr("fill", (_, i) => colors[i % colors.length])
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1);
+  svg.selectAll("text")
+    .data(pie)
+    .enter()
+    .append("text")
+    .text((d, i) => labels[i])
+    .attr("transform", d => `translate(${arc.centroid(d)})`)
+    .attr("text-anchor", "middle")
+    .attr("font-size", "10px");
+}
+
+function drawLineChart(container, { labels, values }) {
+  const width = 350, height = 200, margin = { top: 20, right: 10, bottom: 40, left: 40 };
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+  const x = d3.scalePoint().domain(labels).range([margin.left, width - margin.right]);
+  const y = d3.scaleLinear().domain([0, d3.max(values)]).nice().range([height - margin.bottom, margin.top]);
+  svg.append("g")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x));
+  svg.append("g")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y));
+  const line = d3.line()
+    .x((_, i) => x(labels[i]))
+    .y(d => y(d));
+  svg.append("path")
+    .datum(values)
+    .attr("fill", "none")
+    .attr("stroke", "#36a2eb")
+    .attr("stroke-width", 2)
+    .attr("d", line);
+}
+
+function drawDoughnutChart(container, { labels, values, colors }) {
+  const width = 350, height = 200, radius = Math.min(width, height) / 2 - 10;
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .append("g")
+    .attr("transform", `translate(${width / 2},${height / 2})`);
+  const pie = d3.pie()(values);
+  const arc = d3.arc().innerRadius(radius * 0.5).outerRadius(radius);
+  svg.selectAll("path")
+    .data(pie)
+    .enter()
+    .append("path")
+    .attr("d", arc)
+    .attr("fill", (_, i) => colors[i % colors.length])
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1);
+  svg.selectAll("text")
+    .data(pie)
+    .enter()
+    .append("text")
+    .text((d, i) => labels[i])
+    .attr("transform", d => `translate(${arc.centroid(d)})`)
+    .attr("text-anchor", "middle")
+    .attr("font-size", "10px");
+}
 
 function Dashboard({ token, onLogout, persona, loginName }) {
   const [data, setData] = useState([]);
@@ -37,14 +141,97 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Refs for each chart and table
-  const barRef = useRef();
-  const pieRef = useRef();
-  const lineRef = useRef();
-  const doughnutRef = useRef();
+  const barRef = useD3Chart(
+    drawBarChart,
+    {
+      labels: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.product_name))],
+      values: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.product_name))].map(
+        p => data.filter(row =>
+          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedStore ? row.store_name === selectedStore : true) &&
+          row.product_name === p
+        ).reduce((a, b) => a + Number(b.revenue), 0)
+      )
+    },
+    [data, selectedProduct, selectedStore]
+  );
+
+  const pieColors = ["#ff6384", "#ffce56", "#36a2eb", "#9966ff", "#4bc0c0"];
+  const pieRef = useD3Chart(
+    drawPieChart,
+    {
+      labels: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.store_name))],
+      values: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.store_name))].map(
+        s => data.filter(row =>
+          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedStore ? row.store_name === selectedStore : true) &&
+          row.store_name === s
+        ).reduce((a, b) => a + Number(b.revenue), 0)
+      ),
+      colors: pieColors
+    },
+    [data, selectedProduct, selectedStore]
+  );
+
+  const lineRef = useD3Chart(
+    drawLineChart,
+    {
+      labels: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.date))].sort(),
+      values: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.date))].sort().map(
+        d => data.filter(row =>
+          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedStore ? row.store_name === selectedStore : true) &&
+          row.date === d
+        ).reduce((a, b) => a + Number(b.revenue), 0)
+      )
+    },
+    [data, selectedProduct, selectedStore]
+  );
+
+  const doughnutColors = ["#ff6384", "#ffce56", "#36a2eb", "#4bc0c0"];
+  const doughnutRef = useD3Chart(
+    drawDoughnutChart,
+    {
+      labels: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.category))],
+      values: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.category))].map(
+        c => data.filter(row =>
+          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedStore ? row.store_name === selectedStore : true) &&
+          row.category === c
+        ).reduce((a, b) => a + Number(b.units_sold), 0)
+      ),
+      colors: doughnutColors
+    },
+    [data, selectedProduct, selectedStore]
+  );
+
   const tableRef = useRef();
 
-  // Fetch filters
+  // Fetch products and stores
   useEffect(() => {
     axios.get(`${API_URL}/api/products`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setProducts(res.data))
@@ -70,81 +257,13 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     fetchData();
     const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
-    // eslint-disable-next-line
   }, [token]);
 
-  // Filtering
   const filteredData = data.filter(row =>
     (selectedProduct ? row.product_name === selectedProduct : true) &&
     (selectedStore ? row.store_name === selectedStore : true)
   );
 
-  // Prepare chart data
-  // 1. Bar: Revenue per product
-  const barData = {
-    labels: [...new Set(filteredData.map(row => row.product_name))],
-    datasets: [{
-      label: "Revenue by Product",
-      data: [...new Set(filteredData.map(row => row.product_name))].map(
-        p => filteredData.filter(row => row.product_name === p).reduce((a, b) => a + Number(b.revenue), 0)
-      ),
-      backgroundColor: "rgba(54, 162, 235, 0.7)"
-    }]
-  };
-
-  // 2. Pie: Revenue by store
-  const storeNames = [...new Set(filteredData.map(row => row.store_name))];
-  const pieData = {
-    labels: storeNames,
-    datasets: [{
-      label: "Revenue by Store",
-      data: storeNames.map(
-        s => filteredData.filter(row => row.store_name === s).reduce((a, b) => a + Number(b.revenue), 0)
-      ),
-      backgroundColor: [
-        "rgba(255, 99, 132, 0.6)",
-        "rgba(255, 206, 86, 0.6)",
-        "rgba(75, 192, 192, 0.6)",
-        "rgba(153, 102, 255, 0.6)",
-        "rgba(54, 162, 235, 0.6)"
-      ]
-    }]
-  };
-
-  // 3. Line: Total revenue over time
-  const dateLabels = [...new Set(filteredData.map(row => row.date))].sort();
-  const lineData = {
-    labels: dateLabels,
-    datasets: [{
-      label: "Total Revenue Over Time",
-      data: dateLabels.map(
-        d => filteredData.filter(row => row.date === d).reduce((a, b) => a + Number(b.revenue), 0)
-      ),
-      borderColor: "rgba(54, 162, 235, 0.8)",
-      fill: false,
-      tension: 0.3
-    }]
-  };
-
-  // 4. Doughnut: Units sold by category
-  const categories = [...new Set(filteredData.map(row => row.category))];
-  const doughnutData = {
-    labels: categories,
-    datasets: [{
-      label: "Units Sold by Category",
-      data: categories.map(
-        c => filteredData.filter(row => row.category === c).reduce((a, b) => a + Number(b.units_sold), 0)
-      ),
-      backgroundColor: [
-        "rgba(255, 99, 132, 0.6)",
-        "rgba(255, 206, 86, 0.6)",
-        "rgba(54, 162, 235, 0.6)",
-        "rgba(75, 192, 192, 0.6)"
-      ]
-    }]
-  };
-
-  // Export Excel: filtered table + filter info as first row
   const exportExcel = () => {
     const filterRow = {
       Date: "",
@@ -162,7 +281,6 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     XLSX.writeFile(wb, "dashboard_sales.xlsx");
   };
 
-  // Export PDF: export 4 charts and table (as seen) + filter info
   const exportPDF = async () => {
     const doc = new jsPDF("p", "pt", "a4");
     const margin = 40;
@@ -176,12 +294,13 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     );
     y += 20;
 
-    // Helper function to add chart image
-    const addChartToPDF = (chartRef, title) => {
+    // Export chart images
+    const addChartToPDF = async (chartRef, title) => {
       if (chartRef.current) {
-        const chartCanvas = chartRef.current.querySelector("canvas");
-        if (chartCanvas) {
-          const chartImg = chartCanvas.toDataURL("image/png", 1.0);
+        const chartSvg = chartRef.current.querySelector("svg");
+        if (chartSvg) {
+          const canvas = await html2canvas(chartSvg, { backgroundColor: "#fff", scale: 2 });
+          const chartImg = canvas.toDataURL("image/png", 1.0);
           doc.text(title, margin, y);
           y += 10;
           doc.addImage(chartImg, "PNG", margin, y, 250, 120);
@@ -190,17 +309,15 @@ function Dashboard({ token, onLogout, persona, loginName }) {
       }
     };
 
-    addChartToPDF(lineRef, "Total Revenue Over Time");
-    addChartToPDF(barRef, "Revenue by Product");
-    addChartToPDF(pieRef, "Revenue by Store");
-    addChartToPDF(doughnutRef, "Units Sold by Category");
+    await addChartToPDF(lineRef, "Total Revenue Over Time");
+    await addChartToPDF(barRef, "Revenue by Product");
+    await addChartToPDF(pieRef, "Revenue by Store");
+    await addChartToPDF(doughnutRef, "Units Sold by Category");
 
     // Export table as image
-    const tableElement = tableRef.current;
-    if (tableElement) {
-      const tableCanvas = await html2canvas(tableElement, { scale: 2 });
+    if (tableRef.current) {
+      const tableCanvas = await html2canvas(tableRef.current, { scale: 2 });
       const tableImg = tableCanvas.toDataURL("image/png", 1.0);
-
       if (y + 220 > doc.internal.pageSize.getHeight()) {
         doc.addPage();
         y = margin;
@@ -213,29 +330,21 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     doc.save("dashboard_sales.pdf");
   };
 
-  // --- Email Me button handler ---
-const handleEmailMe = async () => {
-  try {
-    // Option 1: Image
-    const canvas = await html2canvas(document.body);
-    const imageData = canvas.toDataURL("image/png");
-    // Option 2: PDF (uncomment if you want PDF)
-    // const pdf = new jsPDF();
-    // pdf.html(document.body, { callback: (doc) => { ... } });
-    // const pdfData = pdf.output('datauristring');
-
-    await axios.post(`${API_URL}/api/email_me`, {
-      message: "Here is the canvas image",
-      image: imageData, // or pdfData
-    }, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    alert("Dashboard emailed!");
-  } catch (e) {
-    alert("Failed to send email");
-  }
-};
+  const handleEmailMe = async () => {
+    try {
+      const canvas = await html2canvas(document.body);
+      const imageData = canvas.toDataURL("image/png");
+      await axios.post(`${API_URL}/api/email_me`, {
+        message: "Here is the dashboard image",
+        image: imageData
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert("Dashboard emailed!");
+    } catch (e) {
+      alert("Failed to send email");
+    }
+  };
 
   if (loading) return <Spinner animation="border" />;
 
@@ -277,9 +386,7 @@ const handleEmailMe = async () => {
         <Col md={6} className="mb-4">
           <Card>
             <Card.Body>
-              <div ref={lineRef}>
-                <Line data={lineData} />
-              </div>
+              <div ref={lineRef}></div>
             </Card.Body>
             <Card.Footer className="text-center">Total Revenue Over Time</Card.Footer>
           </Card>
@@ -287,9 +394,7 @@ const handleEmailMe = async () => {
         <Col md={6} className="mb-4">
           <Card>
             <Card.Body>
-              <div ref={barRef}>
-                <Bar data={barData} options={{ plugins: { legend: { display: false } } }} />
-              </div>
+              <div ref={barRef}></div>
             </Card.Body>
             <Card.Footer className="text-center">Revenue by Product</Card.Footer>
           </Card>
@@ -300,9 +405,7 @@ const handleEmailMe = async () => {
         <Col md={6} className="mb-4">
           <Card>
             <Card.Body>
-              <div ref={pieRef}>
-                <Pie data={pieData} />
-              </div>
+              <div ref={pieRef}></div>
             </Card.Body>
             <Card.Footer className="text-center">Revenue by Store</Card.Footer>
           </Card>
@@ -310,9 +413,7 @@ const handleEmailMe = async () => {
         <Col md={6} className="mb-4">
           <Card>
             <Card.Body>
-              <div ref={doughnutRef}>
-                <Doughnut data={doughnutData} />
-              </div>
+              <div ref={doughnutRef}></div>
             </Card.Body>
             <Card.Footer className="text-center">Units Sold by Category</Card.Footer>
           </Card>
@@ -367,6 +468,7 @@ function Login({ setToken }) {
       setError('Invalid credentials');
     }
   };
+
 
   // Google Login handler
   const onGoogleSuccess = async (credentialResponse) => {
@@ -441,7 +543,7 @@ export default function App() {
           )}
         </Container>
       </Navbar>
-      {token 
+      {token
         ? <Dashboard token={token} onLogout={() => setToken('')} persona={persona} loginName={loginName} />
         : <Login setToken={setToken} />}
     </GoogleOAuthProvider>
