@@ -189,9 +189,9 @@ function Dashboard({ token, onLogout }) {
       }
     };
 
+    addChartToPDF(lineRef, "Total Revenue Over Time");
     addChartToPDF(barRef, "Revenue by Product");
     addChartToPDF(pieRef, "Revenue by Store");
-    addChartToPDF(lineRef, "Total Revenue Over Time");
     addChartToPDF(doughnutRef, "Units Sold by Category");
 
     // Export table as image
@@ -243,8 +243,18 @@ function Dashboard({ token, onLogout }) {
         </Col>
       </Row>
 
-      {/* 4 Visuals */}
+      {/* First Row: Line and Bar */}
       <Row>
+        <Col md={6} className="mb-4">
+          <Card>
+            <Card.Body>
+              <div ref={lineRef}>
+                <Line data={lineData} />
+              </div>
+            </Card.Body>
+            <Card.Footer className="text-center">Total Revenue Over Time</Card.Footer>
+          </Card>
+        </Col>
         <Col md={6} className="mb-4">
           <Card>
             <Card.Body>
@@ -255,6 +265,9 @@ function Dashboard({ token, onLogout }) {
             <Card.Footer className="text-center">Revenue by Product</Card.Footer>
           </Card>
         </Col>
+      </Row>
+      {/* Second Row: Pie and Doughnut */}
+      <Row>
         <Col md={6} className="mb-4">
           <Card>
             <Card.Body>
@@ -263,18 +276,6 @@ function Dashboard({ token, onLogout }) {
               </div>
             </Card.Body>
             <Card.Footer className="text-center">Revenue by Store</Card.Footer>
-          </Card>
-        </Col>
-      </Row>
-      <Row>
-        <Col md={6} className="mb-4">
-          <Card>
-            <Card.Body>
-              <div ref={lineRef}>
-                <Line data={lineData} />
-              </div>
-            </Card.Body>
-            <Card.Footer className="text-center">Total Revenue Over Time</Card.Footer>
           </Card>
         </Col>
         <Col md={6} className="mb-4">
