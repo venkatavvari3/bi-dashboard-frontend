@@ -7,6 +7,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { jwtDecode } from "jwt-decode";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
+import { Canvg } from "canvg"; // <-- added for svg to canvas
 
 const API_URL = process.env.REACT_APP_API_URL || "";
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
@@ -131,6 +132,19 @@ function drawDoughnutChart(container, { labels, values, colors }) {
     .attr("text-anchor", "middle")
     .attr("font-size", "10px");
 }
+
+// SVG to PNG helper using canvg
+const svgToPngDataUrl = async (svgElement) => {
+  const width = svgElement.width.baseVal.value || 400;
+  const height = svgElement.height.baseVal.value || 200;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  const v = await Canvg.from(ctx, svgElement.outerHTML);
+  await v.render();
+  return canvas.toDataURL('image/png');
+};
 
 function Dashboard({ token, onLogout, persona, loginName }) {
   const [data, setData] = useState([]);
@@ -294,13 +308,12 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     );
     y += 20;
 
-    // Export chart images
+    // Use canvg to convert SVG to PNG for PDF export
     const addChartToPDF = async (chartRef, title) => {
       if (chartRef.current) {
         const chartSvg = chartRef.current.querySelector("svg");
         if (chartSvg) {
-          const canvas = await html2canvas(chartSvg, { backgroundColor: "#fff", scale: 2 });
-          const chartImg = canvas.toDataURL("image/png", 1.0);
+          const chartImg = await svgToPngDataUrl(chartSvg);
           doc.text(title, margin, y);
           y += 10;
           doc.addImage(chartImg, "PNG", margin, y, 250, 120);
@@ -314,7 +327,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     await addChartToPDF(pieRef, "Revenue by Store");
     await addChartToPDF(doughnutRef, "Units Sold by Category");
 
-    // Export table as image
+    // Export table as image (still using html2canvas, tables are fine)
     if (tableRef.current) {
       const tableCanvas = await html2canvas(tableRef.current, { scale: 2 });
       const tableImg = tableCanvas.toDataURL("image/png", 1.0);
@@ -468,7 +481,6 @@ function Login({ setToken }) {
       setError('Invalid credentials');
     }
   };
-
 
   // Google Login handler
   const onGoogleSuccess = async (credentialResponse) => {
