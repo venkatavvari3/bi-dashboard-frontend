@@ -353,7 +353,6 @@ function Dashboard({ token, onLogout, persona, loginName }) {
       tableSheet.addRows(filteredData.map(Object.values)); // Data rows
     }
 
-  
     // Sheet 2: Charts
     const chartSheet = workbook.addWorksheet("Visuals");
     chartSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
@@ -398,69 +397,73 @@ function Dashboard({ token, onLogout, persona, loginName }) {
 
 
   const exportPDF = async () => {
-  const doc = new jsPDF("p", "pt", "a4");
-  const margin = 40;
+    const doc = new jsPDF("p", "pt", "a4");
+    const margin = 40;
+    const pageWidth = doc.internal.pageSize.getWidth();
 
-  // Page 1: Charts
-  doc.setFontSize(12);
-  doc.text(
-    `Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`,
-    margin,
-    margin
-  );
+    // Page 1: Charts
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    doc.text(
+      `Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`,
+      margin,
+      margin
+    );
 
-  const chartWidth = 130;
-  const chartHeight = 100;
-  const chartSpacing = 20;
-  const startY = margin + 20;
-  let currentX = margin;
+    const chartWidth = 120;
+    const chartHeight = 100;
+    const chartSpacing = 20;
+    const startY = margin + 20;
+    const chartRefs = [lineRef, barRef, pieRef, doughnutRef];
+    const chartTitles = [
+      "Total Revenue Over Time",
+      "Revenue by Product",
+      "Revenue by Store",
+      "Units Sold by Category",
+    ];
 
-  const addChartToPDF = async (chartRef) => {
-    if (chartRef.current) {
-      const chartSvg = chartRef.current.querySelector("svg");
-      if (chartSvg) {
-        const chartImg = await svgToPngDataUrl(chartSvg);
-        doc.addImage(chartImg, "PNG", currentX, startY, chartWidth, chartHeight);
-        currentX += chartWidth + chartSpacing;
+    // Calculate total width needed and center charts
+    const totalChartWidth = chartRefs.length * chartWidth + (chartRefs.length - 1) * chartSpacing;
+    let startX = (pageWidth - totalChartWidth) / 2;
+
+    for (let i = 0; i < chartRefs.length; i++) {
+      const chartRef = chartRefs[i];
+      const title = chartTitles[i];
+
+      if (chartRef.current) {
+        const svg = chartRef.current.querySelector("svg");
+        if (svg) {
+          const chartImg = await svgToPngDataUrl(svg);
+          doc.addImage(chartImg, "PNG", startX, startY, chartWidth, chartHeight);
+          doc.text(title, startX + chartWidth / 2, startY + chartHeight + 15, { align: "center" });
+          startX += chartWidth + chartSpacing;
+        }
       }
     }
+
+    // Page 2: Table
+    doc.addPage();
+    let y = margin;
+
+    // Table title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Sales Table", margin, y);
+    y += 10;
+
+    // Table content
+    if (tableRef.current) {
+      const tableCanvas = await html2canvas(tableRef.current, { scale: 2 });
+      const tableImg = tableCanvas.toDataURL("image/png", 1.0);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.addImage(tableImg, "PNG", margin, y, 500, 200);
+    }
+
+    doc.save("dashboard_sales.pdf");
   };
 
-  await addChartToPDF(lineRef);
-  await addChartToPDF(barRef);
-  await addChartToPDF(pieRef);
-  await addChartToPDF(doughnutRef);
-
-  // Add chart titles below each chart
-  const titleY = startY + chartHeight + 10;
-  currentX = margin;
-  const chartTitles = [
-    "Total Revenue Over Time",
-    "Revenue by Product",
-    "Revenue by Store",
-    "Units Sold by Category",
-  ];
-
-  chartTitles.forEach((title, index) => {
-    doc.text(title, currentX, titleY);
-    currentX += chartWidth + chartSpacing;
-  });
-
-  // Page 2: Table
-  doc.addPage();
-  let y = margin;
-  doc.setFontSize(12);
-  doc.text("Sales Table", margin, y);
-  y += 10;
-
-  if (tableRef.current) {
-    const tableCanvas = await html2canvas(tableRef.current, { scale: 2 });
-    const tableImg = tableCanvas.toDataURL("image/png", 1.0);
-    doc.addImage(tableImg, "PNG", margin, y, 500, 200);
-  }
-
-  doc.save("dashboard_sales.pdf");
-};
 
   const handleEmailMe = async () => {
     try {
