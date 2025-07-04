@@ -445,9 +445,11 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     doc.addPage();
     let y = margin;
 
+    // Set consistent font and size for both title and table
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+
     // Table title
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
     doc.text("Sales Table", margin, y);
     y += 10;
 
@@ -455,9 +457,6 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     if (tableRef.current) {
       const tableCanvas = await html2canvas(tableRef.current, { scale: 1 });
       const tableImg = tableCanvas.toDataURL("image/png", 0.5);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6);
       doc.addImage(tableImg, "PNG", margin, y, 500, 200);
     }
 
