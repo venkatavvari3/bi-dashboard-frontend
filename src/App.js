@@ -342,39 +342,8 @@ function Dashboard({ token, onLogout, persona, loginName }) {
 const exportExcelWithCharts = async () => {
   const workbook = new ExcelJS.Workbook();
 
-  // Sheet 1: Charts
-  const chartSheet = workbook.addWorksheet("Charts");
-  chartSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
-
-  const addChartToSheet = async (chartRef, title, rowOffset) => {
-    if (chartRef.current) {
-      const svg = chartRef.current.querySelector("svg");
-      if (svg) {
-        const imgData = await svgToPngDataUrl(svg);
-        const imageId = workbook.addImage({
-          base64: imgData,
-          extension: "png",
-        });
-        chartSheet.addRow([title]);
-        chartSheet.addImage(imageId, {
-          tl: { col: 0, row: rowOffset },
-          ext: { width: 500, height: 300 },
-        });
-        return rowOffset + 20; // Adjust based on image height
-      }
-    }
-    return rowOffset;
-  };
-
-  let rowOffset = 2;
-  rowOffset = await addChartToSheet(lineRef, "Total Revenue Over Time", rowOffset);
-  rowOffset = await addChartToSheet(barRef, "Revenue by Product", rowOffset);
-  rowOffset = await addChartToSheet(pieRef, "Revenue by Store", rowOffset);
-  rowOffset = await addChartToSheet(doughnutRef, "Units Sold by Category", rowOffset);
-
-
-  // Sheet 2: Table
-  const tableSheet = workbook.addWorksheet("Sales Table");
+  // Sheet 1: Table
+  const tableSheet = workbook.addWorksheet("Dataset");
   tableSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
   tableSheet.addRow([]); // Empty row
 
@@ -383,6 +352,38 @@ const exportExcelWithCharts = async () => {
     tableSheet.addRow(Object.keys(filteredData[0])); // Header row
     tableSheet.addRows(filteredData.map(Object.values)); // Data rows
   }
+
+  // Sheet 2: Charts
+  const chartSheet = workbook.addWorksheet("Visuals");
+  chartSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
+
+  const addChartToSheet = async (chartRef, title, colOffset) => {
+    if (chartRef.current) {
+      const svg = chartRef.current.querySelector("svg");
+        if (svg) {
+          const imgData = await svgToPngDataUrl(svg);
+          const imageId = workbook.addImage({
+            base64: imgData,
+            extension: "png",
+          });
+
+          // Add image in one row, spaced horizontally
+          chartSheet.addImage(imageId, {
+            tl: { col: colOffset, row: 1 },
+            ext: { width: 300, height: 200 },
+          });
+
+          // Add title below the image
+          chartSheet.getCell(15, colOffset + 1).value = title; // row 15, col is 1-based
+      }
+    }
+  };
+
+  let rowOffset = 2;
+  rowOffset = await addChartToSheet(lineRef, "Total Revenue Over Time", rowOffset);
+  rowOffset = await addChartToSheet(barRef, "Revenue by Product", rowOffset);
+  rowOffset = await addChartToSheet(pieRef, "Revenue by Store", rowOffset);
+  rowOffset = await addChartToSheet(doughnutRef, "Units Sold by Category", rowOffset);
 
   // Save file
   const buffer = await workbook.xlsx.writeBuffer();
