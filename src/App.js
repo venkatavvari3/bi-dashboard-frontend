@@ -378,8 +378,6 @@ const exportExcelWithCharts = async () => {
   //tableSheet.addRow([]); // Empty row
   //XLSX.utils.sheet_add_json(tableSheet, filteredData, { origin: -1 });
 
-  
-const exportExcel = () => {
 const filterRow = {
   FilteredProduct: selectedProduct || "All",
   FilteredStore: selectedStore || "All",
