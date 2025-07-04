@@ -373,10 +373,29 @@ const exportExcelWithCharts = async () => {
   rowOffset = await addChartToSheet(doughnutRef, "Units Sold by Category", rowOffset);
 
   // Sheet 2: Table
-  const tableSheet = workbook.addWorksheet("Sales Table");
-  tableSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
-  tableSheet.addRow([]); // Empty row
-  XLSX.utils.sheet_add_json(tableSheet, filteredData, { origin: -1 });
+  //const tableSheet = workbook.addWorksheet("Sales Table");
+  //tableSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
+  //tableSheet.addRow([]); // Empty row
+  //XLSX.utils.sheet_add_json(tableSheet, filteredData, { origin: -1 });
+
+  
+const exportExcel = () => {
+const filterRow = {
+  FilteredProduct: selectedProduct || "All",
+  FilteredStore: selectedStore || "All",
+};
+
+// Create an array with the filter row, an empty row, and then the data
+const exportData = [
+  filterRow,
+  {}, // Empty row to separate filter info from the table
+  ...filteredData,
+];
+
+const ws = XLSX.utils.json_to_sheet(exportData);
+const wb = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wb, ws, "Sales Table");
+//XLSX.writeFile(wb, "dashboard_sales.xlsx");
 
   // Save file
   const buffer = await workbook.xlsx.writeBuffer();
