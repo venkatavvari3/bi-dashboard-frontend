@@ -443,28 +443,27 @@ function Dashboard({ token, onLogout, persona, loginName }) {
       }
     }
     
-  // Page 2: Table
-    doc.addPage();
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text("Sales Table", margin, margin);
+   // Page 2: Table
+   doc.addPage();
+   doc.setFont("helvetica", "normal");
+   doc.setFontSize(10);
+   doc.text("Sales Table", margin, margin);
 
-    // Prepare table data
-    const headers = Object.keys(filteredData[0] || {});
-    const rows = filteredData.map(row => headers.map(h => row[h]));
+   // Prepare table data
+   const headers = Object.keys(filteredData[0] || {});
+   const rows = filteredData.map(row => headers.map(h => row[h]));
 
-    autoTable(doc, {
-      startY: margin + 10,
-      head: [headers],
-      body: rows,
-      styles: { font: "helvetica", fontSize: 8 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-      margin: { left: margin, right: margin },
-    });
+   autoTable(doc, {
+    startY: margin + 10,
+    head: [headers],
+    body: rows,
+    styles: { font: "helvetica", fontSize: 8 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+    margin: { left: margin, right: margin },
+   });
 
     doc.save("dashboard_sales.pdf");
   };
-
 
   const handleEmailMe = async () => {
     try {
