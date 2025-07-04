@@ -353,40 +353,42 @@ const exportExcelWithCharts = async () => {
     tableSheet.addRows(filteredData.map(Object.values)); // Data rows
   }
 
+ 
   // Sheet 2: Charts
   const chartSheet = workbook.addWorksheet("Visuals");
   chartSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
 
   const addChartToSheet = async (chartRef, title, colOffset) => {
-  if (chartRef.current) {
-    const svg = chartRef.current.querySelector("svg");
-    if (svg) {
+    if (chartRef.current) {
+      const svg = chartRef.current.querySelector("svg");
+      if (svg) {
         const imgData = await svgToPngDataUrl(svg);
         const imageId = workbook.addImage({
           base64: imgData,
           extension: "png",
         });
 
-        // Add image in one row, spaced horizontally
+        // Add image at row 2, in the specified column
         chartSheet.addImage(imageId, {
-          tl: { col: colOffset, row: 1 },
+          tl: { col: colOffset, row: 1 }, // row is 0-indexed here
           ext: { width: 300, height: 200 },
         });
 
-        // Add title below the image
-        const titleRow = chartSheet.getRow(15);
+        // Add title below the image (row 12, assuming image height ~10 rows)
+        const titleRowNumber = 12;
+        const titleRow = chartSheet.getRow(titleRowNumber);
         titleRow.getCell(colOffset + 1).value = title;
         titleRow.commit();
       }
     }
   };
 
+  // Use column offsets to place charts side by side
+  await addChartToSheet(lineRef, "Total Revenue Over Time", 0);
+  await addChartToSheet(barRef, "Revenue by Product", 6);
+  await addChartToSheet(pieRef, "Revenue by Store", 12);
+  await addChartToSheet(doughnutRef, "Units Sold by Category", 18);
 
-  let rowOffset = 2;
-  rowOffset = await addChartToSheet(lineRef, "Total Revenue Over Time", rowOffset);
-  rowOffset = await addChartToSheet(barRef, "Revenue by Product", rowOffset);
-  rowOffset = await addChartToSheet(pieRef, "Revenue by Store", rowOffset);
-  rowOffset = await addChartToSheet(doughnutRef, "Units Sold by Category", rowOffset);
 
   // Save file
   const buffer = await workbook.xlsx.writeBuffer();
