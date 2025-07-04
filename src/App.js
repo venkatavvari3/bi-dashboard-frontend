@@ -368,20 +368,30 @@ function Dashboard({ token, onLogout, persona, loginName }) {
             extension: "png",
           });
 
-          // Add image at row 2, in the specified column
+          const imageWidthInCols = 5; // Adjust based on image width and column width
+          const imageStartRow = 2;
+          const imageHeightInRows = 10;
+
+          // Add image
           chartSheet.addImage(imageId, {
-            tl: { col: colOffset, row: 1 }, // row is 0-indexed here
+            tl: { col: colOffset, row: imageStartRow - 1 },
             ext: { width: 300, height: 200 },
           });
 
-          // Add title below the image (row 12, assuming image height ~10 rows)
-          const titleRowNumber = 12;
-          const titleRow = chartSheet.getRow(titleRowNumber);
-          titleRow.getCell(colOffset + 1).value = title;
-          titleRow.commit();
+          // Merge cells below the image for the title
+          const titleRowNumber = imageStartRow + imageHeightInRows;
+          const startCol = colOffset + 1;
+          const endCol = colOffset + imageWidthInCols;
+
+          chartSheet.mergeCells(titleRowNumber, startCol, titleRowNumber, endCol);
+          const titleCell = chartSheet.getCell(titleRowNumber, startCol);
+          titleCell.value = title;
+          titleCell.alignment = { horizontal: "center" };
+          titleCell.font = { bold: true };
         }
       }
     };
+
 
     // Use column offsets to place charts side by side
     await addChartToSheet(lineRef, "Total Revenue Over Time", 0);
