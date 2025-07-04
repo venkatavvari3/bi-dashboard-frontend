@@ -339,111 +339,128 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     (selectedStore ? row.store_name === selectedStore : true)
   );
 
-const exportExcelWithCharts = async () => {
-  const workbook = new ExcelJS.Workbook();
+  const exportExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
 
-  // Sheet 1: Table
-  const tableSheet = workbook.addWorksheet("Dataset");
-  tableSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
-  tableSheet.addRow([]); // Empty row
+    // Sheet 1: Table
+    const tableSheet = workbook.addWorksheet("Dataset");
+    tableSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
+    tableSheet.addRow([]); // Empty row
 
-  // Add table headers
-  if (filteredData.length > 0) {
-    tableSheet.addRow(Object.keys(filteredData[0])); // Header row
-    tableSheet.addRows(filteredData.map(Object.values)); // Data rows
-  }
-
- 
-  // Sheet 2: Charts
-  const chartSheet = workbook.addWorksheet("Visuals");
-  chartSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
-
-  const addChartToSheet = async (chartRef, title, colOffset) => {
-    if (chartRef.current) {
-      const svg = chartRef.current.querySelector("svg");
-      if (svg) {
-        const imgData = await svgToPngDataUrl(svg);
-        const imageId = workbook.addImage({
-          base64: imgData,
-          extension: "png",
-        });
-
-        // Add image at row 2, in the specified column
-        chartSheet.addImage(imageId, {
-          tl: { col: colOffset, row: 1 }, // row is 0-indexed here
-          ext: { width: 300, height: 200 },
-        });
-
-        // Add title below the image (row 12, assuming image height ~10 rows)
-        const titleRowNumber = 12;
-        const titleRow = chartSheet.getRow(titleRowNumber);
-        titleRow.getCell(colOffset + 1).value = title;
-        titleRow.commit();
-      }
+    // Add table headers
+    if (filteredData.length > 0) {
+      tableSheet.addRow(Object.keys(filteredData[0])); // Header row
+      tableSheet.addRows(filteredData.map(Object.values)); // Data rows
     }
-  };
 
-  // Use column offsets to place charts side by side
-  await addChartToSheet(lineRef, "Total Revenue Over Time", 0);
-  await addChartToSheet(barRef, "Revenue by Product", 6);
-  await addChartToSheet(pieRef, "Revenue by Store", 12);
-  await addChartToSheet(doughnutRef, "Units Sold by Category", 18);
+  
+    // Sheet 2: Charts
+    const chartSheet = workbook.addWorksheet("Visuals");
+    chartSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
 
-
-  // Save file
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-  saveAs(blob, "dashboard_sales.xlsx");
-};
-
-
-  const exportPDF = async () => {
-    const doc = new jsPDF("p", "pt", "a4");
-    const margin = 40;
-    let y = margin;
-
-    doc.setFontSize(12);
-    doc.text(
-      `Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`,
-      margin,
-      y
-    );
-    y += 20;
-
-    // Use canvg to convert SVG to PNG for PDF export
-    const addChartToPDF = async (chartRef, title) => {
+    const addChartToSheet = async (chartRef, title, colOffset) => {
       if (chartRef.current) {
-        const chartSvg = chartRef.current.querySelector("svg");
-        if (chartSvg) {
-          const chartImg = await svgToPngDataUrl(chartSvg);
-          doc.text(title, margin, y);
-          y += 10;
-          doc.addImage(chartImg, "PNG", margin, y, 250, 120);
-          y += 130;
+        const svg = chartRef.current.querySelector("svg");
+        if (svg) {
+          const imgData = await svgToPngDataUrl(svg);
+          const imageId = workbook.addImage({
+            base64: imgData,
+            extension: "png",
+          });
+
+          // Add image at row 2, in the specified column
+          chartSheet.addImage(imageId, {
+            tl: { col: colOffset, row: 1 }, // row is 0-indexed here
+            ext: { width: 300, height: 200 },
+          });
+
+          // Add title below the image (row 12, assuming image height ~10 rows)
+          const titleRowNumber = 12;
+          const titleRow = chartSheet.getRow(titleRowNumber);
+          titleRow.getCell(colOffset + 1).value = title;
+          titleRow.commit();
         }
       }
     };
 
-    await addChartToPDF(lineRef, "Total Revenue Over Time");
-    await addChartToPDF(barRef, "Revenue by Product");
-    await addChartToPDF(pieRef, "Revenue by Store");
-    await addChartToPDF(doughnutRef, "Units Sold by Category");
+    // Use column offsets to place charts side by side
+    await addChartToSheet(lineRef, "Total Revenue Over Time", 0);
+    await addChartToSheet(barRef, "Revenue by Product", 6);
+    await addChartToSheet(pieRef, "Revenue by Store", 12);
+    await addChartToSheet(doughnutRef, "Units Sold by Category", 18);
 
-    // Export table as image (still using html2canvas, tables are fine)
-    if (tableRef.current) {
-      const tableCanvas = await html2canvas(tableRef.current, { scale: 2 });
-      const tableImg = tableCanvas.toDataURL("image/png", 1.0);
-      if (y + 220 > doc.internal.pageSize.getHeight()) {
-        doc.addPage();
-        y = margin;
-      }
-      doc.text("Sales Table", margin, y);
-      y += 10;
-      doc.addImage(tableImg, "PNG", margin, y, 500, 200);
-    }
 
-    doc.save("dashboard_sales.pdf");
+    // Save file
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    saveAs(blob, "dashboard_sales.xlsx");
   };
+
+
+  const exportPDF = async () => {
+  const doc = new jsPDF("p", "pt", "a4");
+  const margin = 40;
+
+  // Page 1: Charts
+  doc.setFontSize(12);
+  doc.text(
+    `Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`,
+    margin,
+    margin
+  );
+
+  const chartWidth = 130;
+  const chartHeight = 100;
+  const chartSpacing = 20;
+  const startY = margin + 20;
+  let currentX = margin;
+
+  const addChartToPDF = async (chartRef) => {
+    if (chartRef.current) {
+      const chartSvg = chartRef.current.querySelector("svg");
+      if (chartSvg) {
+        const chartImg = await svgToPngDataUrl(chartSvg);
+        doc.addImage(chartImg, "PNG", currentX, startY, chartWidth, chartHeight);
+        currentX += chartWidth + chartSpacing;
+      }
+    }
+  };
+
+  await addChartToPDF(lineRef);
+  await addChartToPDF(barRef);
+  await addChartToPDF(pieRef);
+  await addChartToPDF(doughnutRef);
+
+  // Add chart titles below each chart
+  const titleY = startY + chartHeight + 10;
+  currentX = margin;
+  const chartTitles = [
+    "Total Revenue Over Time",
+    "Revenue by Product",
+    "Revenue by Store",
+    "Units Sold by Category",
+  ];
+
+  chartTitles.forEach((title, index) => {
+    doc.text(title, currentX, titleY);
+    currentX += chartWidth + chartSpacing;
+  });
+
+  // Page 2: Table
+  doc.addPage();
+  let y = margin;
+  doc.setFontSize(12);
+  doc.text("Sales Table", margin, y);
+  y += 10;
+
+  if (tableRef.current) {
+    const tableCanvas = await html2canvas(tableRef.current, { scale: 2 });
+    const tableImg = tableCanvas.toDataURL("image/png", 1.0);
+    doc.addImage(tableImg, "PNG", margin, y, 500, 200);
+  }
+
+  doc.save("dashboard_sales.pdf");
+};
 
   const handleEmailMe = async () => {
     try {
@@ -503,7 +520,7 @@ const exportExcelWithCharts = async () => {
           </Form.Group>
         </Col>
         <Col md={4} className="text-end">
-          <Button onClick={exportExcelWithCharts} className="me-2" size="sm">Export Excel</Button>
+          <Button onClick={exportExcel} className="me-2" size="sm">Export Excel</Button>
           <Button onClick={exportPDF} className="me-2" size="sm">Export PDF</Button>
           <Button onClick={handleEmailMe} className="me-2" size="sm" variant="info">Email me</Button>
           <Button variant="outline-secondary" onClick={onLogout} size="sm">Logout</Button>
