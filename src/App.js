@@ -457,7 +457,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
       const tableImg = tableCanvas.toDataURL("image/png", 1.0);
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
+      doc.setFontSize(6);
       doc.addImage(tableImg, "PNG", margin, y, 500, 200);
     }
 
