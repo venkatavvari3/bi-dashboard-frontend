@@ -358,26 +358,29 @@ const exportExcelWithCharts = async () => {
   chartSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
 
   const addChartToSheet = async (chartRef, title, colOffset) => {
-    if (chartRef.current) {
-      const svg = chartRef.current.querySelector("svg");
-        if (svg) {
-          const imgData = await svgToPngDataUrl(svg);
-          const imageId = workbook.addImage({
-            base64: imgData,
-            extension: "png",
-          });
+  if (chartRef.current) {
+    const svg = chartRef.current.querySelector("svg");
+    if (svg) {
+        const imgData = await svgToPngDataUrl(svg);
+        const imageId = workbook.addImage({
+          base64: imgData,
+          extension: "png",
+        });
 
-          // Add image in one row, spaced horizontally
-          chartSheet.addImage(imageId, {
-            tl: { col: colOffset, row: 1 },
-            ext: { width: 300, height: 200 },
-          });
+        // Add image in one row, spaced horizontally
+        chartSheet.addImage(imageId, {
+          tl: { col: colOffset, row: 1 },
+          ext: { width: 300, height: 200 },
+        });
 
-          // Add title below the image
-          chartSheet.getCell(15, colOffset + 1).value = title; // row 15, col is 1-based
+        // Add title below the image
+        const titleRow = chartSheet.getRow(15);
+        titleRow.getCell(colOffset + 1).value = title;
+        titleRow.commit();
       }
     }
   };
+
 
   let rowOffset = 2;
   rowOffset = await addChartToSheet(lineRef, "Total Revenue Over Time", rowOffset);
