@@ -453,8 +453,8 @@ function Dashboard({ token, onLogout, persona, loginName }) {
 
     // Table content
     if (tableRef.current) {
-      const tableCanvas = await html2canvas(tableRef.current, { scale: 2 });
-      const tableImg = tableCanvas.toDataURL("image/png", 1.0);
+      const tableCanvas = await html2canvas(tableRef.current, { scale: 1 });
+      const tableImg = tableCanvas.toDataURL("image/png", 0.5);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6);
