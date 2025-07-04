@@ -10,6 +10,8 @@ import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { Canvg } from "canvg";
 import ExcelJS from "exceljs";
 import { saveAs } from 'file-saver';
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const API_URL = process.env.REACT_APP_API_URL || "";
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
@@ -440,25 +442,25 @@ function Dashboard({ token, onLogout, persona, loginName }) {
         }
       }
     }
+    
+  // Page 2: Table
+    doc.addPage();
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Sales Table", margin, margin);
 
-    // Page 2: Table
-    doc.addPage();
-    let y = margin;
+    // Prepare table data
+    const headers = Object.keys(filteredData[0] || {});
+    const rows = filteredData.map(row => headers.map(h => row[h]));
 
-    // Set consistent font and size for both title and table
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-
-    // Table title
-    doc.text("Sales Table", margin, y);
-    y += 10;
-
-    // Table content
-    if (tableRef.current) {
-      const tableCanvas = await html2canvas(tableRef.current, { scale: 1 });
-      const tableImg = tableCanvas.toDataURL("image/png", 0.5);
-      doc.addImage(tableImg, "PNG", margin, y, 500, 200);
-    }
+    autoTable(doc, {
+      startY: margin + 10,
+      head: [headers],
+      body: rows,
+      styles: { font: "helvetica", fontSize: 8 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+      margin: { left: margin, right: margin },
+    });
 
     doc.save("dashboard_sales.pdf");
   };
