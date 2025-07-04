@@ -372,11 +372,17 @@ const exportExcelWithCharts = async () => {
   rowOffset = await addChartToSheet(pieRef, "Revenue by Store", rowOffset);
   rowOffset = await addChartToSheet(doughnutRef, "Units Sold by Category", rowOffset);
 
+
   // Sheet 2: Table
   const tableSheet = workbook.addWorksheet("Sales Table");
   tableSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
-  tableSheet.addRow({}); // Empty row
-  XLSX.utils.json_to_sheet(tableSheet, ...filteredData);
+  tableSheet.addRow([]); // Empty row
+
+  // Add table headers
+  if (filteredData.length > 0) {
+    tableSheet.addRow(Object.keys(filteredData[0])); // Header row
+    tableSheet.addRows(filteredData.map(Object.values)); // Data rows
+  }
 
   // Save file
   const buffer = await workbook.xlsx.writeBuffer();
