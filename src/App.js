@@ -8,6 +8,7 @@ import html2canvas from "html2canvas";
 import { jwtDecode } from "jwt-decode";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { Canvg } from "canvg";
+import ExcelJS from "exceljs";
 
 const API_URL = process.env.REACT_APP_API_URL || "";
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
@@ -337,22 +338,51 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     (selectedStore ? row.store_name === selectedStore : true)
   );
 
-  const exportExcel = () => {
-    const filterRow = {
-      Date: "",
-      Product: selectedProduct || "All",
-      Category: "",
-      Store: selectedStore || "All",
-      Customer: "",
-      "Units Sold": "",
-      Revenue: "",
-      Profit: ""
-    };
-    const ws = XLSX.utils.json_to_sheet([filterRow, ...filteredData]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Sales");
-    XLSX.writeFile(wb, "dashboard_sales.xlsx");
+const exportExcelWithCharts = async () => {
+  const workbook = new ExcelJS.Workbook();
+
+  // Sheet 1: Charts
+  const chartSheet = workbook.addWorksheet("Charts");
+  chartSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
+
+  const addChartToSheet = async (chartRef, title, rowOffset) => {
+    if (chartRef.current) {
+      const svg = chartRef.current.querySelector("svg");
+      if (svg) {
+        const imgData = await svgToPngDataUrl(svg);
+        const imageId = workbook.addImage({
+          base64: imgData,
+          extension: "png",
+        });
+        chartSheet.addRow([title]);
+        chartSheet.addImage(imageId, {
+          tl: { col: 0, row: rowOffset },
+          ext: { width: 500, height: 300 },
+        });
+        return rowOffset + 20; // Adjust based on image height
+      }
+    }
+    return rowOffset;
   };
+
+  let rowOffset = 2;
+  rowOffset = await addChartToSheet(lineRef, "Total Revenue Over Time", rowOffset);
+  rowOffset = await addChartToSheet(barRef, "Revenue by Product", rowOffset);
+  rowOffset = await addChartToSheet(pieRef, "Revenue by Store", rowOffset);
+  rowOffset = await addChartToSheet(doughnutRef, "Units Sold by Category", rowOffset);
+
+  // Sheet 2: Table
+  const tableSheet = workbook.addWorksheet("Sales Table");
+  tableSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
+  tableSheet.addRow([]); // Empty row
+  XLSX.utils.sheet_add_json(tableSheet, filteredData, { origin: -1 });
+
+  // Save file
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  saveAs(blob, "dashboard_sales.xlsx");
+};
+
 
   const exportPDF = async () => {
     const doc = new jsPDF("p", "pt", "a4");
@@ -460,7 +490,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
           </Form.Group>
         </Col>
         <Col md={4} className="text-end">
-          <Button onClick={exportExcel} className="me-2" size="sm">Export Excel</Button>
+          <Button onClick={exportExcelWithCharts} className="me-2" size="sm">Export Excel</Button>
           <Button onClick={exportPDF} className="me-2" size="sm">Export PDF</Button>
           <Button onClick={handleEmailMe} className="me-2" size="sm" variant="info">Email me</Button>
           <Button variant="outline-secondary" onClick={onLogout} size="sm">Logout</Button>
