@@ -392,13 +392,11 @@ function Dashboard({ token, onLogout, persona, loginName }) {
       }
     };
 
-
     // Use column offsets to place charts side by side
     await addChartToSheet(lineRef, "Total Revenue Over Time", 0);
-    await addChartToSheet(barRef, "Revenue by Product", 6);
-    await addChartToSheet(pieRef, "Revenue by Store", 12);
-    await addChartToSheet(doughnutRef, "Units Sold by Category", 18);
-
+    await addChartToSheet(barRef, "Revenue by Product", 5);
+    await addChartToSheet(pieRef, "Revenue by Store", 10);
+    await addChartToSheet(doughnutRef, "Units Sold by Category", 15);
 
     // Save file
     const buffer = await workbook.xlsx.writeBuffer();
