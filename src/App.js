@@ -1015,9 +1015,9 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
               value={selectedProduct}
               onChange={e => setSelectedProduct(e.target.value)}
             >
-               <option value="">All Products</option>
-              {[...new Set(products.map(p => p.Name))].map(name => (
-                <option key={name} value={name}>{name}</option>
+              <option value="">All Products</option>
+              {products.map(p => (
+                <option key={p.product_id} value={p.product_name}>{p.product_name}</option>
               ))}
             </Form.Select>
           </Form.Group>
