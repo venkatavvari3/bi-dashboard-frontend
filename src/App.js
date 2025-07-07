@@ -700,17 +700,17 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
     drawBarChart,
     {
       labels: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedProduct ? row.product_id === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.product_name))],
+      ).map(row => row.product_id))],
       values: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedProduct ? row.product_id === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.product_name))].map(
+      ).map(row => row.product_id))].map(
         p => data.filter(row =>
-          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedProduct ? row.product_id === selectedProduct : true) &&
           (selectedStore ? row.store_name === selectedStore : true) &&
-          row.product_name === p
+          row.product_id === p
         ).reduce((a, b) => a + Number(b.revenue), 0)
       )
     },
@@ -722,15 +722,15 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
     drawPieChart,
     {
       labels: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedProduct ? row.product_id === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
       ).map(row => row.store_name))],
       values: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedProduct ? row.product_id === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
       ).map(row => row.store_name))].map(
         s => data.filter(row =>
-          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedProduct ? row.product_id === selectedProduct : true) &&
           (selectedStore ? row.store_name === selectedStore : true) &&
           row.store_name === s
         ).reduce((a, b) => a + Number(b.revenue), 0)
@@ -744,15 +744,15 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
     drawLineChart,
     {
       labels: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedProduct ? row.product_id === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
       ).map(row => row.date))].sort(),
       values: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedProduct ? row.product_id === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
       ).map(row => row.date))].sort().map(
         d => data.filter(row =>
-          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedProduct ? row.product_id === selectedProduct : true) &&
           (selectedStore ? row.store_name === selectedStore : true) &&
           row.date === d
         ).reduce((a, b) => a + Number(b.revenue), 0)
@@ -766,15 +766,15 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
     drawDoughnutChart,
     {
       labels: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedProduct ? row.product_id === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
       ).map(row => row.category))],
       values: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedProduct ? row.product_id === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
       ).map(row => row.category))].map(
         c => data.filter(row =>
-          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedProduct ? row.product_id === selectedProduct : true) &&
           (selectedStore ? row.store_name === selectedStore : true) &&
           row.category === c
         ).reduce((a, b) => a + Number(b.units_sold), 0)
@@ -789,14 +789,14 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
     {
       name: "root",
       children: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedProduct ? row.product_id === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.product_name))].map(name => ({
+      ).map(row => row.product_id))].map(name => ({
         name,
         value: data.filter(row =>
-          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedProduct ? row.product_id === selectedProduct : true) &&
           (selectedStore ? row.store_name === selectedStore : true) &&
-          row.product_name === name
+          row.product_id === name
         ).reduce((a, b) => a + Number(b.revenue), 0)
       }))
     },
@@ -834,7 +834,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
   }, [token]);
 
   const filteredData = data.filter(row =>
-    (selectedProduct ? row.product_name === selectedProduct : true) &&
+    (selectedProduct ? row.product_id === selectedProduct : true) &&
     (selectedStore ? row.store_name === selectedStore : true)
   );
 
