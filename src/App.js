@@ -217,6 +217,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
   const barRef = useD3Chart(
     drawBarChart,
@@ -474,31 +475,30 @@ function Dashboard({ token, onLogout, persona, loginName }) {
 
   const handleEmailMe = async () => {
     if (!email) {
-    alert("Please enter an email address.");
-    return;
-   }
+      alert("Please enter an email address.");
+      return;
+    }
 
-   try {
-    const canvas = await html2canvas(document.body);
-    const imageData = canvas.toDataURL("image/png");
+    try {
+      const canvas = await html2canvas(document.body);
+      const imageData = canvas.toDataURL("image/png");
 
-    await axios.post(
-      `${API_URL}/api/email_me`,
-      {
+      await axios.post(`${API_URL}/api/email_me`, {
         to: email,
         message: "Please find attached dashboard",
         image: imageData,
-      },
-      {
+      }, {
         headers: { Authorization: `Bearer ${token}` },
-      }
-      );
+      });
 
       alert("Dashboard emailed!");
+      setShowEmailForm(false);
+      setEmail("");
     } catch (e) {
       alert("Failed to send email");
     }
-   };
+  };
+
 
   if (loading) return <Spinner animation="border" />;
 
@@ -544,18 +544,33 @@ function Dashboard({ token, onLogout, persona, loginName }) {
         </Col>
 
         <Col md={4} className="text-end">
-          <Form.Control
-            type="email"
-            placeholder="Enter email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            size="sm"
-            className="mb-2"
-          />
-          <Button onClick={exportExcel} className="me-2" size="sm">Export Excel</Button>
-          <Button onClick={exportPDF} className="me-2" size="sm">Export PDF</Button>
-          <Button onClick={handleEmailMe} className="me-2" size="sm" variant="info">Send Email</Button>
-          <Button variant="outline-secondary" onClick={onLogout} size="sm">Logout</Button>
+          {showEmailForm ? (
+            <>
+              <Form.Control
+                type="email"
+                placeholder="Enter email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                size="sm"
+                className="mb-2"
+              />
+              <Button onClick={handleEmailMe} className="me-2 mb-2" size="sm" variant="info">
+                Submit Email
+              </Button>
+              <Button variant="outline-secondary" size="sm" onClick={() => setShowEmailForm(false)}>
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => setShowEmailForm(true)} className="me-2" size="sm" variant="info">
+              Send Email
+            </Button>
+          )}
+          <div className="mt-2">
+            <Button onClick={exportExcel} className="me-2" size="sm">Export Excel</Button>
+            <Button onClick={exportPDF} className="me-2" size="sm">Export PDF</Button>
+            <Button variant="outline-secondary" onClick={onLogout} size="sm">Logout</Button>
+          </div>
         </Col>
       </Row>
 
