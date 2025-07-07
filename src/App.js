@@ -561,9 +561,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
               onChange={e => setSelectedProduct(e.target.value)}
             >
               <option value="">All Products</option>
-                {Array.from(new Set(products.map(p => p.Name))).map(name => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
+              {products.map(p => (
                 <option key={p.product_id} value={p.product_name}>{p.product_name}</option>
               ))}
             </Form.Select>
@@ -1018,9 +1016,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
               onChange={e => setSelectedProduct(e.target.value)}
             >
               <option value="">All Products</option>
-                {Array.from(new Set(products.map(p => p.Name))).map(name => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
+              {products.map(p => (
                 <option key={p.product_id} value={p.product_name}>{p.product_name}</option>
               ))}
             </Form.Select>
