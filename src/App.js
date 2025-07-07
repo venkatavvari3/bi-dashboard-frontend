@@ -19,7 +19,7 @@ const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 function SalesDashboard(props) {
   return <Dashboard {...props} />;
 }
-function PizzaParadiseDashboard(props) {
+function PizzeriaDashboard(props) {
   return <PPDashboard {...props} />;
 }
 
@@ -936,7 +936,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
 
   return (
     <Container>
-      <h1 className="mt-3">PizzaParadise Dashboard</h1>
+      <h1 className="mt-3">Pizzeria Dashboard</h1>
       <div className="mb-3" style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#1a73e8' }}>
         Logged in as: {loginName} {persona && <>({persona})</>}
       </div>
@@ -953,7 +953,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
             >
               <option value="">All Products</option>
               {products.map(p => (
-                <option key={p.sku} value={p.name}>{p.name}</option>
+                <option key={p.sku} value={p.sku}>{p.sku}</option>
               ))}
             </Form.Select>
           </Form.Group>
@@ -1158,7 +1158,7 @@ export default function App() {
   // Sidebar navigation
   const dashboards = [
     { key: "sales", label: "Sales Dashboard", component: SalesDashboard },
-    { key: "pizzaparadise", label: "PizzaParadise Dashboard", component: PizzaParadiseDashboard },
+    { key: "pizzeria", label: "Pizzeria Dashboard", component: PizzeriaDashboard },
     { key: "customers", label: "Customers Dashboard", component: CustomersDashboard }
   ];
   const DashboardComponent = dashboards.find(d => d.key === selectedDashboard)?.component || SalesDashboard;
