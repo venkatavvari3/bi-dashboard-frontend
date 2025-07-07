@@ -374,7 +374,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 60000);
+    const interval = setInterval(fetchData, 12000);
     return () => clearInterval(interval);
   }, [token]);
 
@@ -829,7 +829,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 180000);
+    const interval = setInterval(fetchData, 12000);
     return () => clearInterval(interval);
   }, [token]);
 
