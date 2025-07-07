@@ -221,15 +221,15 @@ function drawTreemap(container, data) {
     .attr("transform", d => `translate(${d.x0},${d.y0})`);
 
   leaf.append("rect")
-    .attr("id", d => (d.leafUid = (d.data && d.data.name) || "leaf").replace(/\s+/g, "_"))
-    .attr("fill", d => color((d.parent && d.parent.data && d.parent.data.name) || "unknown"))
+    .attr("id", d => (d.leafUid = d.data.name).replace(/\s+/g, "_"))
+    .attr("fill", d => color(d.parent.data.name))
     .attr("width", d => d.x1 - d.x0)
     .attr("height", d => d.y1 - d.y0);
 
   leaf.append("text")
-    .attr("clip-path", d => d.leafUid ? `url(#${d.leafUid})` : null)
+    .attr("clip-path", d => `url(#${d.leafUid})`)
     .selectAll("tspan")
-    .data(d => (d.data && d.data.name ? d.data.name.split(/\s+/) : []))
+    .data(d => d.data.name.split(/\s+/))
     .join("tspan")
     .attr("x", 4)
     .attr("y", (d, i) => 13 + i * 10)
@@ -561,7 +561,9 @@ function Dashboard({ token, onLogout, persona, loginName }) {
               onChange={e => setSelectedProduct(e.target.value)}
             >
               <option value="">All Products</option>
-              {products.map(p => (
+                {Array.from(new Set(products.map(p => p.Name))).map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
                 <option key={p.product_id} value={p.product_name}>{p.product_name}</option>
               ))}
             </Form.Select>
@@ -1016,7 +1018,9 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
               onChange={e => setSelectedProduct(e.target.value)}
             >
               <option value="">All Products</option>
-              {products.map(p => (
+                {Array.from(new Set(products.map(p => p.Name))).map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
                 <option key={p.product_id} value={p.product_name}>{p.product_name}</option>
               ))}
             </Form.Select>
