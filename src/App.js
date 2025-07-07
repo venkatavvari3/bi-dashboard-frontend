@@ -221,15 +221,15 @@ function drawTreemap(container, data) {
     .attr("transform", d => `translate(${d.x0},${d.y0})`);
 
   leaf.append("rect")
-    .attr("id", d => (d.leafUid = d.data.name).replace(/\s+/g, "_"))
-    .attr("fill", d => color(d.parent.data.name))
+    .attr("id", d => (d.leafUid = (d.data && d.data.name) || "leaf").replace(/\s+/g, "_"))
+    .attr("fill", d => color((d.parent && d.parent.data && d.parent.data.name) || "unknown"))
     .attr("width", d => d.x1 - d.x0)
     .attr("height", d => d.y1 - d.y0);
 
   leaf.append("text")
-    .attr("clip-path", d => `url(#${d.leafUid})`)
+    .attr("clip-path", d => d.leafUid ? `url(#${d.leafUid})` : null)
     .selectAll("tspan")
-    .data(d => d.data.name.split(/\s+/))
+    .data(d => (d.data && d.data.name ? d.data.name.split(/\s+/) : []))
     .join("tspan")
     .attr("x", 4)
     .attr("y", (d, i) => 13 + i * 10)
