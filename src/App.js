@@ -818,7 +818,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
   // Fetch data
   const fetchData = () => {
     setLoading(true);
-    axios.get(`${API_URL}/api/data`, { headers: { Authorization: `Bearer ${token}` } })
+    axios.get(`${API_URL}/api/ppdata`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
         setData(res.data);
         setError("");
