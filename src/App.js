@@ -191,6 +191,51 @@ function drawDoughnutChart(container, { labels, values, colors }) {
     .attr("font-size", Math.max(Math.min(width, height) / 24, 10));
 }
 
+function drawTreemap(container, data) {
+  const width = (container.offsetWidth || 320) * 0.99;
+  const height = (container.offsetHeight || 200) * 0.99;
+
+  d3.select(container).selectAll("*").remove();
+
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("width", "99%")
+    .attr("height", "99%")
+    .attr("viewBox", [0, 0, width, height])
+    .attr("preserveAspectRatio", "xMinYMin meet")
+    .style("display", "block");
+
+  const root = d3.hierarchy(data)
+    .sum(d => d.value)
+    .sort((a, b) => b.value - a.value);
+
+  d3.treemap()
+    .size([width, height])
+    .padding(1)(root);
+
+  const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+  const leaf = svg.selectAll("g")
+    .data(root.leaves())
+    .join("g")
+    .attr("transform", d => `translate(${d.x0},${d.y0})`);
+
+  leaf.append("rect")
+    .attr("id", d => (d.leafUid = d.data.name).replace(/\s+/g, "_"))
+    .attr("fill", d => color(d.parent.data.name))
+    .attr("width", d => d.x1 - d.x0)
+    .attr("height", d => d.y1 - d.y0);
+
+  leaf.append("text")
+    .attr("clip-path", d => `url(#${d.leafUid})`)
+    .selectAll("tspan")
+    .data(d => d.data.name.split(/\s+/))
+    .join("tspan")
+    .attr("x", 4)
+    .attr("y", (d, i) => 13 + i * 10)
+    .text(d => d);
+}
+
 // SVG to PNG helper using canvg
 const svgToPngDataUrl = async (svgElement) => {
   const width = svgElement.width.baseVal.value || 400;
@@ -302,7 +347,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     },
     [data, selectedProduct, selectedStore]
   );
-
+  
   const tableRef = useRef();
 
   // Fetch products and stores
@@ -739,6 +784,25 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
     [data, selectedProduct, selectedStore]
   );
 
+  const treemapRef = useD3Chart(
+    drawTreemap,
+    {
+      name: "root",
+      children: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.product_name))].map(name => ({
+        name,
+        value: data.filter(row =>
+          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedStore ? row.store_name === selectedStore : true) &&
+          row.product_name === name
+        ).reduce((a, b) => a + Number(b.revenue), 0)
+      }))
+    },
+    [data, selectedProduct, selectedStore]
+  );
+
   const tableRef = useRef();
 
   // Fetch products and stores
@@ -953,7 +1017,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
             >
               <option value="">All Products</option>
               {products.map(p => (
-                <option key={p.sku} value={p.sku}>{p.sku}</option>
+                <option key={p.product_id} value={p.product_name}>{p.product_name}</option>
               ))}
             </Form.Select>
           </Form.Group>
@@ -969,7 +1033,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
             >
               <option value="">All Stores</option>
               {stores.map(s => (
-                <option key={s.id} value={s.id}>{s.id}</option>
+                <option key={s.store_id} value={s.store_name}>{s.store_name}</option>
               ))}
             </Form.Select>
           </Form.Group>
@@ -1042,6 +1106,16 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
         </Col>
       </Row>
 
+      <Row>
+       <Col md={3} className="mb-4">
+          <Card>
+            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+              <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
+            </Card.Body>
+            <Card.Footer className="text-center">Revenue Treemap</Card.Footer>
+          </Card>
+        </Col>
+      </Row>
       <div ref={tableRef}>
         <Table striped bordered hover size="sm" className="mt-4">
           <thead>
