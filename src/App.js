@@ -20,7 +20,7 @@ function SalesDashboard(props) {
   return <Dashboard {...props} />;
 }
 function PizzaParadiseDashboard(props) {
-  return <Dashboard {...props} />;
+  return <PPDashboard {...props} />;
 }
 
 function CustomersDashboard(props) {
@@ -501,6 +501,442 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   return (
     <Container>
       <h1 className="mt-3">Sales Dashboard</h1>
+      <div className="mb-3" style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#1a73e8' }}>
+        Logged in as: {loginName} {persona && <>({persona})</>}
+      </div>
+      {error && <Alert variant="danger">{error}</Alert>}
+
+      <Row className="my-3">
+        <Col md={4}>
+          <Form.Group>
+            <Form.Label htmlFor="productDropdown"><b>Product</b></Form.Label>
+            <Form.Select
+              id="productDropdown"
+              value={selectedProduct}
+              onChange={e => setSelectedProduct(e.target.value)}
+            >
+              <option value="">All Products</option>
+              {products.map(p => (
+                <option key={p.product_id} value={p.product_name}>{p.product_name}</option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        </Col>
+
+        <Col md={4}>
+          <Form.Group>
+            <Form.Label htmlFor="storeDropdown"><b>Store</b></Form.Label>
+            <Form.Select
+              id="storeDropdown"
+              value={selectedStore}
+              onChange={e => setSelectedStore(e.target.value)}
+            >
+              <option value="">All Stores</option>
+              {stores.map(s => (
+                <option key={s.store_id} value={s.store_name}>{s.store_name}</option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        </Col>
+
+        <Col md={4} className="text-end">
+          {showEmailForm ? (
+            <>
+              <Form.Control
+                type="email"
+                placeholder="Enter email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                size="sm"
+                className="mb-2"
+              />
+              <Button onClick={handleEmailMe} className="me-2 mb-2" size="sm" variant="info">
+                Submit Email
+              </Button>
+              <Button variant="outline-secondary" size="sm" onClick={() => setShowEmailForm(false)}>
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => setShowEmailForm(true)} className="me-2" size="sm" variant="info">
+              Send Email
+            </Button>
+          )}
+          <div className="mt-2">
+            <Button onClick={exportExcel} className="me-2" size="sm">Export Excel</Button>
+            <Button onClick={exportPDF} className="me-2" size="sm">Export PDF</Button>
+            <Button variant="outline-secondary" onClick={onLogout} size="sm">Logout</Button>
+          </div>
+        </Col>
+      </Row>
+
+      {/* All graphs in one row, 99% size within columns */}
+      <Row>
+        <Col md={3} className="mb-4">
+          <Card>
+            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+              <div ref={lineRef} style={{ width: "99%", height: "99%" }}></div>
+            </Card.Body>
+            <Card.Footer className="text-center">Total Revenue Over Time</Card.Footer>
+          </Card>
+        </Col>
+        <Col md={3} className="mb-4">
+          <Card>
+            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+              <div ref={barRef} style={{ width: "99%", height: "99%" }}></div>
+            </Card.Body>
+            <Card.Footer className="text-center">Revenue by Product</Card.Footer>
+          </Card>
+        </Col>
+        <Col md={3} className="mb-4">
+          <Card>
+            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+              <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
+            </Card.Body>
+            <Card.Footer className="text-center">Revenue by Store</Card.Footer>
+          </Card>
+        </Col>
+        <Col md={3} className="mb-4">
+          <Card>
+            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+              <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
+            </Card.Body>
+            <Card.Footer className="text-center">Units Sold by Category</Card.Footer>
+          </Card>
+        </Col>
+      </Row>
+
+      <div ref={tableRef}>
+        <Table striped bordered hover size="sm" className="mt-4">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Store</th>
+              <th>Customer</th>
+              <th>Units Sold</th>
+              <th>Revenue</th>
+              <th>Profit</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredData.map((row, idx) => (
+              <tr key={idx}>
+                <td>{row.date}</td>
+                <td>{row.product_name}</td>
+                <td>{row.category}</td>
+                <td>{row.store_name}</td>
+                <td>{row.customer_name}</td>
+                <td>{row.units_sold}</td>
+                <td>{row.revenue}</td>
+                <td>{row.profit}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </div>
+    </Container>
+  );
+}
+
+function PPDashboard({ token, onLogout, persona, loginName }) {
+  const [data, setData] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [stores, setStores] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState("");
+  const [selectedStore, setSelectedStore] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [email, setEmail] = useState("");
+  const [showEmailForm, setShowEmailForm] = useState(false);
+
+  const barRef = useD3Chart(
+    drawBarChart,
+    {
+      labels: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.product_name))],
+      values: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.product_name))].map(
+        p => data.filter(row =>
+          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedStore ? row.store_name === selectedStore : true) &&
+          row.product_name === p
+        ).reduce((a, b) => a + Number(b.revenue), 0)
+      )
+    },
+    [data, selectedProduct, selectedStore]
+  );
+
+  const pieColors = ["#ff6384", "#ffce56", "#36a2eb", "#9966ff", "#4bc0c0"];
+  const pieRef = useD3Chart(
+    drawPieChart,
+    {
+      labels: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.store_name))],
+      values: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.store_name))].map(
+        s => data.filter(row =>
+          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedStore ? row.store_name === selectedStore : true) &&
+          row.store_name === s
+        ).reduce((a, b) => a + Number(b.revenue), 0)
+      ),
+      colors: pieColors
+    },
+    [data, selectedProduct, selectedStore]
+  );
+
+  const lineRef = useD3Chart(
+    drawLineChart,
+    {
+      labels: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.date))].sort(),
+      values: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.date))].sort().map(
+        d => data.filter(row =>
+          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedStore ? row.store_name === selectedStore : true) &&
+          row.date === d
+        ).reduce((a, b) => a + Number(b.revenue), 0)
+      )
+    },
+    [data, selectedProduct, selectedStore]
+  );
+
+  const doughnutColors = ["#ff6384", "#ffce56", "#36a2eb", "#4bc0c0"];
+  const doughnutRef = useD3Chart(
+    drawDoughnutChart,
+    {
+      labels: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.category))],
+      values: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.category))].map(
+        c => data.filter(row =>
+          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedStore ? row.store_name === selectedStore : true) &&
+          row.category === c
+        ).reduce((a, b) => a + Number(b.units_sold), 0)
+      ),
+      colors: doughnutColors
+    },
+    [data, selectedProduct, selectedStore]
+  );
+
+  const tableRef = useRef();
+
+  // Fetch products and stores
+  useEffect(() => {
+    axios.get(`${API_URL}/api/ppproducts`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => setProducts(res.data))
+      .catch(() => setProducts([]));
+    axios.get(`${API_URL}/api/ppstores`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => setStores(res.data))
+      .catch(() => setStores([]));
+  }, [token]);
+
+  // Fetch data
+  const fetchData = () => {
+    setLoading(true);
+    axios.get(`${API_URL}/api/data`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => {
+        setData(res.data);
+        setError("");
+      })
+      .catch(() => setError("Failed to fetch data"))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 60000);
+    return () => clearInterval(interval);
+  }, [token]);
+
+  const filteredData = data.filter(row =>
+    (selectedProduct ? row.product_name === selectedProduct : true) &&
+    (selectedStore ? row.store_name === selectedStore : true)
+  );
+
+  const exportExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+
+    // Sheet 1: Table
+    const tableSheet = workbook.addWorksheet("Dataset");
+    tableSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
+    tableSheet.addRow([]); // Empty row
+
+    // Add table headers
+    if (filteredData.length > 0) {
+      tableSheet.addRow(Object.keys(filteredData[0])); // Header row
+      tableSheet.addRows(filteredData.map(Object.values)); // Data rows
+    }
+
+    // Sheet 2: Charts
+    const chartSheet = workbook.addWorksheet("Visuals");
+    chartSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
+
+    const addChartToSheet = async (chartRef, title, colOffset) => {
+      if (chartRef.current) {
+        const svg = chartRef.current.querySelector("svg");
+        if (svg) {
+          const imgData = await svgToPngDataUrl(svg);
+          const imageId = workbook.addImage({
+            base64: imgData,
+            extension: "png",
+          });
+
+          const imageWidthInCols = 5; // Adjust based on image width and column width
+          const imageStartRow = 2;
+          const imageHeightInRows = 10;
+
+          // Add image
+          chartSheet.addImage(imageId, {
+            tl: { col: colOffset, row: imageStartRow - 1 },
+            ext: { width: 300, height: 200 },
+          });
+
+          // Merge cells below the image for the title
+          const titleRowNumber = imageStartRow + imageHeightInRows;
+          const startCol = colOffset + 1;
+          const endCol = colOffset + imageWidthInCols;
+
+          chartSheet.mergeCells(titleRowNumber, startCol, titleRowNumber, endCol);
+          const titleCell = chartSheet.getCell(titleRowNumber, startCol);
+          titleCell.value = title;
+          titleCell.alignment = { horizontal: "center" };
+          titleCell.font = { bold: true };
+        }
+      }
+    };
+
+    // Use column offsets to place charts side by side
+    await addChartToSheet(lineRef, "Total Revenue Over Time", 0);
+    await addChartToSheet(barRef, "Revenue by Product", 5);
+    await addChartToSheet(pieRef, "Revenue by Store", 10);
+    await addChartToSheet(doughnutRef, "Units Sold by Category", 15);
+
+    // Save file
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    saveAs(blob, "dashboard_sales.xlsx");
+  };
+
+  const exportPDF = async () => {
+    const doc = new jsPDF("p", "pt", "a4");
+    const margin = 40;
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Page 1: Charts
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(12);
+    doc.text(
+      `Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`,
+      margin,
+      margin
+    );
+
+    const chartWidth = 120;
+    const chartHeight = 100;
+    const chartSpacing = 20;
+    const startY = margin + 20;
+    const chartRefs = [lineRef, barRef, pieRef, doughnutRef];
+    const chartTitles = [
+      "Total Revenue Over Time",
+      "Revenue by Product",
+      "Revenue by Store",
+      "Units Sold by Category",
+    ];
+
+    // Calculate total width needed and center charts
+    const totalChartWidth = chartRefs.length * chartWidth + (chartRefs.length - 1) * chartSpacing;
+    let startX = (pageWidth - totalChartWidth) / 2;
+
+    for (let i = 0; i < chartRefs.length; i++) {
+      const chartRef = chartRefs[i];
+      const title = chartTitles[i];
+
+      if (chartRef.current) {
+        const svg = chartRef.current.querySelector("svg");
+        if (svg) {
+          const chartImg = await svgToPngDataUrl(svg);
+          doc.addImage(chartImg, "PNG", startX, startY, chartWidth, chartHeight);
+          doc.text(title, startX + chartWidth / 2, startY + chartHeight + 15, { align: "center" });
+          startX += chartWidth + chartSpacing;
+        }
+      }
+    }
+    
+   // Page 2: Table
+   doc.addPage();
+   doc.setFont("helvetica", "normal");
+   doc.setFontSize(10);
+   doc.text("Sales Table", margin, margin);
+
+   // Prepare table data
+   const headers = Object.keys(filteredData[0] || {});
+   const rows = filteredData.map(row => headers.map(h => row[h]));
+
+   autoTable(doc, {
+    startY: margin + 10,
+    head: [headers],
+    body: rows,
+    styles: { font: "helvetica", fontSize: 8 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+    margin: { left: margin, right: margin },
+   });
+
+    doc.save("dashboard_sales.pdf");
+  };
+
+  const handleEmailMe = async () => {
+    if (!email) {
+      alert("Please enter an email address.");
+      return;
+    }
+
+    try {
+      const canvas = await html2canvas(document.body);
+      const imageData = canvas.toDataURL("image/png");
+
+      await axios.post(`${API_URL}/api/email_me`, {
+        to: email,
+        message: "Please find attached dashboard",
+        image: imageData,
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      alert("Dashboard emailed!");
+      setShowEmailForm(false);
+      setEmail("");
+    } catch (e) {
+      alert("Failed to send email");
+    }
+  };
+
+
+  if (loading) return <Spinner animation="border" />;
+
+  return (
+    <Container>
+      <h1 className="mt-3">PizzaParadise Dashboard</h1>
       <div className="mb-3" style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#1a73e8' }}>
         Logged in as: {loginName} {persona && <>({persona})</>}
       </div>
