@@ -686,6 +686,7 @@ function Login({ setToken }) {
 }
 
 export default function App() {
+  const [email, setEmail] = useState("");
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [persona, setPersona] = useState("");
   const [loginName, setLoginName] = useState("");
