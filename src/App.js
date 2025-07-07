@@ -472,21 +472,34 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     doc.save("dashboard_sales.pdf");
   };
 
+  
   const handleEmailMe = async () => {
-    try {
-      const canvas = await html2canvas(document.body);
-      const imageData = canvas.toDataURL("image/png");
-      await axios.post(`${API_URL}/api/email_me`, {
+    if (!email) {
+    alert("Please enter an email address.");
+    return;
+   }
+
+   try {
+    const canvas = await html2canvas(document.body);
+    const imageData = canvas.toDataURL("image/png");
+
+    await axios.post(
+      `${API_URL}/api/email_me`,
+      {
+        to: email,
         message: "Please find attached dashboard",
-        image: imageData
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+        image: imageData,
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+      );
+
       alert("Dashboard emailed!");
     } catch (e) {
       alert("Failed to send email");
     }
-  };
+   };
 
   if (loading) return <Spinner animation="border" />;
 
@@ -514,6 +527,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
             </Form.Select>
           </Form.Group>
         </Col>
+
         <Col md={4}>
           <Form.Group>
             <Form.Label htmlFor="storeDropdown"><b>Store</b></Form.Label>
@@ -529,10 +543,19 @@ function Dashboard({ token, onLogout, persona, loginName }) {
             </Form.Select>
           </Form.Group>
         </Col>
+
         <Col md={4} className="text-end">
+          <Form.Control
+            type="email"
+            placeholder="Enter email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            size="sm"
+            className="mb-2"
+          />
           <Button onClick={exportExcel} className="me-2" size="sm">Export Excel</Button>
           <Button onClick={exportPDF} className="me-2" size="sm">Export PDF</Button>
-          <Button onClick={handleEmailMe} className="me-2" size="sm" variant="info">Email me</Button>
+          <Button onClick={handleEmailMe} className="me-2" size="sm" variant="info">Send Email</Button>
           <Button variant="outline-secondary" onClick={onLogout} size="sm">Logout</Button>
         </Col>
       </Row>
