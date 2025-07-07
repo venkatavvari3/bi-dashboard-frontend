@@ -1017,7 +1017,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
             >
               <option value="">All Products</option>
               {products.map(p => (
-                <option key={p.product_id} value={p.product_name}>{p.product_name}</option>
+                <option key={p.product_id} value={p.product_id}>{p.product_id}</option>
               ))}
             </Form.Select>
           </Form.Group>
