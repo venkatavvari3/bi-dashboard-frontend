@@ -216,6 +216,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   const [selectedStore, setSelectedStore] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [email, setEmail] = useState("");
 
   const barRef = useD3Chart(
     drawBarChart,
@@ -404,7 +405,6 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     saveAs(blob, "dashboard_sales.xlsx");
   };
 
-
   const exportPDF = async () => {
     const doc = new jsPDF("p", "pt", "a4");
     const margin = 40;
@@ -472,7 +472,6 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     doc.save("dashboard_sales.pdf");
   };
 
-  
   const handleEmailMe = async () => {
     if (!email) {
     alert("Please enter an email address.");
@@ -686,7 +685,6 @@ function Login({ setToken }) {
 }
 
 export default function App() {
-  const [email, setEmail] = useState("");
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [persona, setPersona] = useState("");
   const [loginName, setLoginName] = useState("");
