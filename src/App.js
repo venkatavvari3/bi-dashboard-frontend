@@ -19,14 +19,10 @@ const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 function SalesDashboard(props) {
   return <Dashboard {...props} />;
 }
-function InventoryDashboard(props) {
-  return (
-    <Container className="mt-4">
-      <h2>Inventory Dashboard (Coming Soon)</h2>
-      <p>This is a placeholder for another dashboard view. Add your charts/tables here.</p>
-    </Container>
-  );
+function PizzaParadiseDashboard(props) {
+  return <Dashboard {...props} />;
 }
+
 function CustomersDashboard(props) {
   return (
     <Container className="mt-4">
@@ -726,7 +722,7 @@ export default function App() {
   // Sidebar navigation
   const dashboards = [
     { key: "sales", label: "Sales Dashboard", component: SalesDashboard },
-    { key: "inventory", label: "Inventory Dashboard", component: InventoryDashboard },
+    { key: "pizzaparadise", label: "PizzaParadise Dashboard", component: PizzaParadiseDashboard },
     { key: "customers", label: "Customers Dashboard", component: CustomersDashboard }
   ];
   const DashboardComponent = dashboards.find(d => d.key === selectedDashboard)?.component || SalesDashboard;
