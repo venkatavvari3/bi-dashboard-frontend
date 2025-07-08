@@ -355,23 +355,29 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   );
 
   const treemapRef = useD3Chart(
-    drawTreemap,
-    {
-      name: "root",
-      children: [...new Set(data.filter(row =>
+  drawTreemap,
+  {
+    name: "root",
+    children: [...new Set(data
+      .filter(row =>
         (selectedProduct ? row.product_name === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.product_name))].map(name => ({
-        name,
-        value: data.filter(row =>
+      )
+      .map(row => row.product_name.trim().toLowerCase()) // normalize
+    )].map(name => ({
+      name,
+      value: data
+        .filter(row =>
           (selectedProduct ? row.product_name === selectedProduct : true) &&
           (selectedStore ? row.store_name === selectedStore : true) &&
-          row.product_name === name
-        ).reduce((a, b) => a + Number(b.revenue), 0)
-      }))
-    },
-    [data, selectedProduct, selectedStore]
-  );
+          row.product_name.trim().toLowerCase() === name
+        )
+        .reduce((a, b) => a + Number(b.revenue), 0)
+    }))
+  },
+  [data, selectedProduct, selectedStore]
+);
+
   
   const tableRef = useRef();
 
