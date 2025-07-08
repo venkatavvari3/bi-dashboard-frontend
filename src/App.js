@@ -649,6 +649,33 @@ const treemapRef = useD3Chart(
         </Col>
 
         <Col md={4} className="text-end">
+        <Button className="me-2 mb-2" size="sm" variant="primary" onClick={() => setShowSubscribeForm(!showSubscribeForm)}>
+          Subscribe
+        </Button>
+        {showSubscribeForm && (
+          <Form className="mt-2">
+            <Form.Group className="mb-2">
+              <Form.Label>Repeat Frequency</Form.Label>
+              <Form.Select>
+                <option>Hourly</option>
+                <option>Daily</option>
+                <option>Weekly</option>
+              </Form.Select>
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label>Scheduled Time</Form.Label>
+              <Form.Control type="time" />
+            </Form.Group>
+            <Form.Group className="mb-2">
+              <Form.Label>Report Format</Form.Label>
+              <Form.Select>
+                <option>CSV</option>
+                <option>PPT</option>
+              </Form.Select>
+            </Form.Group>
+            <Button variant="success" size="sm">Submit</Button>
+          </Form>
+        )}
           {showEmailForm ? (
             <>
               <Form.Control
