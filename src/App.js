@@ -20,7 +20,13 @@ function SalesDashboard(props) {
   return <Dashboard {...props} />;
 }
 function PizzeriaDashboard(props) {
-  return <PPDashboard {...props} />;
+  //return <PPDashboard {...props} />;
+  return (
+    <Container className="mt-4">
+      <h2>Pizzeria Dashboard (Coming Soon)</h2>
+      <p>This is a placeholder for another dashboard view. Add your charts/tables here.</p>
+    </Container>
+  );
 }
 
 function CustomersDashboard(props) {
@@ -347,6 +353,25 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     },
     [data, selectedProduct, selectedStore]
   );
+
+  const treemapRef = useD3Chart(
+    drawTreemap,
+    {
+      name: "root",
+      children: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ).map(row => row.product_name))].map(name => ({
+        name,
+        value: data.filter(row =>
+          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedStore ? row.store_name === selectedStore : true) &&
+          row.product_name === name
+        ).reduce((a, b) => a + Number(b.revenue), 0)
+      }))
+    },
+    [data, selectedProduct, selectedStore]
+  );
   
   const tableRef = useRef();
 
@@ -647,6 +672,17 @@ function Dashboard({ token, onLogout, persona, loginName }) {
               <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
             </Card.Body>
             <Card.Footer className="text-center">Units Sold by Category</Card.Footer>
+          </Card>
+        </Col>
+      </Row>
+
+      <Row>
+       <Col md={3} className="mb-4">
+          <Card>
+            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+              <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
+            </Card.Body>
+            <Card.Footer className="text-center">Revenue Treemap</Card.Footer>
           </Card>
         </Col>
       </Row>
