@@ -350,6 +350,41 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   
   const tableRef = useRef();
 
+const treemapRef = useD3Chart(
+  drawTreemap,
+  {
+    name: "root",
+    children: [...new Set(data
+      .filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      )
+      .map(row => row.category)
+    )].map(category => ({
+      name: category,
+      children: [...new Set(data
+        .filter(row =>
+          (selectedProduct ? row.product_name === selectedProduct : true) &&
+          (selectedStore ? row.store_name === selectedStore : true) &&
+          row.category === category
+        )
+        .map(row => row.product_name)
+      )].map(product => ({
+        name: product,
+        value: data
+          .filter(row =>
+            (selectedProduct ? row.product_name === selectedProduct : true) &&
+            (selectedStore ? row.store_name === selectedStore : true) &&
+            row.category === category &&
+            row.product_name === product
+          )
+          .reduce((a, b) => a + Number(b.revenue), 0)
+      }))
+    }))
+  },
+  [data, selectedProduct, selectedStore]
+);
+
   // Fetch products and stores
   useEffect(() => {
     axios.get(`${API_URL}/api/products`, { headers: { Authorization: `Bearer ${token}` } })
@@ -785,39 +820,23 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
   );
 
   const treemapRef = useD3Chart(
-  drawTreemap,
-  {
-    name: "root",
-    children: [...new Set(data
-      .filter(row =>
-        (selectedProduct ? row.product_name === selectedProduct : true) &&
+    drawTreemap,
+    {
+      name: "root",
+      children: [...new Set(data.filter(row =>
+        (selectedProduct ? row.product_id === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
-      )
-      .map(row => row.category)
-    )].map(category => ({
-      name: category,
-      children: [...new Set(data
-        .filter(row =>
-          (selectedProduct ? row.product_name === selectedProduct : true) &&
+      ).map(row => row.product_id))].map(name => ({
+        name,
+        value: data.filter(row =>
+          (selectedProduct ? row.product_id === selectedProduct : true) &&
           (selectedStore ? row.store_name === selectedStore : true) &&
-          row.category === category
-        )
-        .map(row => row.product_name)
-      )].map(product => ({
-        name: product,
-        value: data
-          .filter(row =>
-            (selectedProduct ? row.product_name === selectedProduct : true) &&
-            (selectedStore ? row.store_name === selectedStore : true) &&
-            row.category === category &&
-            row.product_name === product
-          )
-          .reduce((a, b) => a + Number(b.revenue), 0)
+          row.product_id === name
+        ).reduce((a, b) => a + Number(b.revenue), 0)
       }))
-    }))
-  },
-  [data, selectedProduct, selectedStore]
-);
+    },
+    [data, selectedProduct, selectedStore]
+  );
 
   const tableRef = useRef();
 
