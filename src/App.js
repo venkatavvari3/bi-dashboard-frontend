@@ -685,7 +685,7 @@ function Dashboard({ token, onLogout, persona, loginName }) {
       <Row>
        <Col md={3} className="mb-4">
           <Card>
-            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+            <Card.Body style={{ minHeight: 300, height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
               <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
             </Card.Body>
             <Card.Footer className="text-center">Revenue Treemap</Card.Footer>
