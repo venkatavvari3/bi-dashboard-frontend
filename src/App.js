@@ -374,9 +374,9 @@ function Dashboard({ token, onLogout, persona, loginName }) {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 60000);
-    return () => clearInterval(interval);
+    // Removed auto-refresh
   }, [token]);
+
 
   const filteredData = data.filter(row =>
     (selectedProduct ? row.product_name === selectedProduct : true) &&
@@ -829,9 +829,9 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 180000);
-    return () => clearInterval(interval);
+    // Removed auto-refresh
   }, [token]);
+
 
   const filteredData = data.filter(row =>
     (selectedProduct ? row.product_id === selectedProduct : true) &&
