@@ -191,6 +191,7 @@ function drawDoughnutChart(container, { labels, values, colors }) {
     .attr("font-size", Math.max(Math.min(width, height) / 24, 10));
 }
 
+
 function drawTreemap(container, data) {
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
@@ -205,6 +206,9 @@ function drawTreemap(container, data) {
     .attr("preserveAspectRatio", "xMinYMin meet")
     .style("display", "block");
 
+  const format = d3.format(",d");
+  const color = d3.scaleOrdinal(d3.schemeCategory10);
+
   const root = d3.hierarchy(data)
     .sum(d => d.value)
     .sort((a, b) => b.value - a.value);
@@ -213,28 +217,44 @@ function drawTreemap(container, data) {
     .size([width, height])
     .padding(1)(root);
 
-  const color = d3.scaleOrdinal(d3.schemeCategory10);
+  let group = svg.append("g").call(render, root);
 
-  const leaf = svg.selectAll("g")
-    .data(root.leaves())
-    .join("g")
-    .attr("transform", d => `translate(${d.x0},${d.y0})`);
+  function render(group, root) {
+    const node = group
+      .selectAll("g")
+      .data(root.children)
+      .join("g")
+      .attr("transform", d => `translate(${d.x0},${d.y0})`);
 
-  leaf.append("rect")
-    .attr("id", d => (d.leafUid = (d.data && d.data.name) ? d.data.name : "unknown").replace(/\s+/g, "_"))
-    .attr("fill", d => d.parent && d.parent.data && d.parent.data.name ? color(d.parent.data.name) : "#ccc")
-    .attr("width", d => d.x1 - d.x0)
-    .attr("height", d => d.y1 - d.y0);
+    node.append("rect")
+      .attr("id", d => (d.leafUid = (d.data && d.data.name) ? d.data.name : "unknown").replace(/\s+/g, "_"))
+      .attr("fill", d => color(d.data.name))
+      .attr("width", d => d.x1 - d.x0)
+      .attr("height", d => d.y1 - d.y0)
+      .on("click", (event, d) => {
+        if (!d.children) return;
+        zoomIn(d);
+      });
 
-  leaf.append("text")
-    .attr("clip-path", d => `url(#${d.leafUid})`)
-    .selectAll("tspan")
-    .data(d => (d.data && d.data.name ? d.data.name.split(/\s+/) : [""]))
-    .join("tspan")
-    .attr("x", 4)
-    .attr("y", (d, i) => 13 + i * 10)
-    .text(d => d);
+    node.append("text")
+      .attr("x", 4)
+      .attr("y", 13)
+      .text(d => d.data.name);
+  }
+
+  function zoomIn(d) {
+    const newRoot = d;
+    const t = svg.transition().duration(750);
+    group.remove();
+    group = svg.append("g").call(render, newRoot);
+  }
+
+  svg.on("click", () => {
+    group.remove();
+    group = svg.append("g").call(render, root);
+  });
 }
+
 
 // SVG to PNG helper using canvg
 const svgToPngDataUrl = async (svgElement) => {
