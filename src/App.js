@@ -261,9 +261,9 @@ function drawTreemap(container, data) {
           d === root ? "#fff" : d.children ? "#045c79" : "#045c79"
         )
         .attr("stroke", "#fff")
-        .on("mousemove", function(d) {
-          tool.style("left", d3.event.pageX + 10 + "px");
-          tool.style("top", d3.event.pageY - 20 + "px");
+        .on("mousemove", function(event, d) {
+          tool.style("left", event.pageX + 10 + "px");
+          tool.style("top", event.pageY - 20 + "px");
           tool.style("display", "inline-block");
           tool.html(`${d.data.name}<br />(${format(d.data.value)})`);
         })
