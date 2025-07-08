@@ -860,24 +860,39 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
   );
 
   const treemapRef = useD3Chart(
-    drawTreemap,
-    {
-      name: "root",
-      children: [...new Set(data.filter(row =>
+  drawTreemap,
+  {
+    name: "root",
+    children: [...new Set(data
+      .filter(row =>
         (selectedProduct ? row.product_id === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.product_id))].map(name => ({
-        name,
-        value: data.filter(row =>
+      )
+      .map(row => row.category)
+    )].map(category => ({
+      name: category,
+      children: [...new Set(data
+        .filter(row =>
           (selectedProduct ? row.product_id === selectedProduct : true) &&
           (selectedStore ? row.store_name === selectedStore : true) &&
-          row.product_id === name
-        ).reduce((a, b) => a + Number(b.revenue), 0)
+          row.category === category
+        )
+        .map(row => row.product_id)
+      )].map(product => ({
+        name: product,
+        value: data
+          .filter(row =>
+            (selectedProduct ? row.product_id === selectedProduct : true) &&
+            (selectedStore ? row.store_name === selectedStore : true) &&
+            row.category === category &&
+            row.product_id === product
+          )
+          .reduce((a, b) => a + Number(b.revenue), 0)
       }))
-    },
-    [data, selectedProduct, selectedStore]
-  );
-
+    }))
+  },
+  [data, selectedProduct, selectedStore]
+);
   const tableRef = useRef();
 
   // Fetch products and stores
