@@ -686,6 +686,17 @@ const treemapRef = useD3Chart(
         </Col>
       </Row>
 
+       <Row>
+       <Col md={3} className="mb-4">
+          <Card>
+            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+              <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
+            </Card.Body>
+            <Card.Footer className="text-center">Revenue Treemap</Card.Footer>
+          </Card>
+        </Col>
+      </Row>
+        
       <div ref={tableRef}>
         <Table striped bordered hover size="sm" className="mt-4">
           <thead>
