@@ -209,7 +209,7 @@ function drawTreemap(container, data) {
   const format = d3.format(",d");
   const color = d3.scaleOrdinal(d3.schemeCategory10);
 
-  const root = d3.hierarchy(data)
+  let root = d3.hierarchy(data)
     .sum(d => d.value)
     .sort((a, b) => b.value - a.value);
 
@@ -217,12 +217,13 @@ function drawTreemap(container, data) {
     .size([width, height])
     .padding(1)(root);
 
+  let currentRoot = root;
   let group = svg.append("g").call(render, root);
 
   function render(group, root) {
     const node = group
       .selectAll("g")
-      .data(root.children)
+      .data(root.children || [])
       .join("g")
       .attr("transform", d => `translate(${d.x0},${d.y0})`);
 
@@ -232,6 +233,7 @@ function drawTreemap(container, data) {
       .attr("width", d => d.x1 - d.x0)
       .attr("height", d => d.y1 - d.y0)
       .on("click", (event, d) => {
+        event.stopPropagation();
         if (!d.children) return;
         zoomIn(d);
       });
@@ -243,15 +245,22 @@ function drawTreemap(container, data) {
   }
 
   function zoomIn(d) {
-    const newRoot = d;
+    currentRoot = d;
     const t = svg.transition().duration(750);
     group.remove();
-    group = svg.append("g").call(render, newRoot);
+    group = svg.append("g").call(render, currentRoot);
+  }
+
+  function zoomOut() {
+    if (!currentRoot.parent) return;
+    currentRoot = currentRoot.parent;
+    const t = svg.transition().duration(750);
+    group.remove();
+    group = svg.append("g").call(render, currentRoot);
   }
 
   svg.on("click", () => {
-    group.remove();
-    group = svg.append("g").call(render, root);
+    zoomOut();
   });
 }
 
