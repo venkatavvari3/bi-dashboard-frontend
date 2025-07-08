@@ -20,13 +20,7 @@ function SalesDashboard(props) {
   return <Dashboard {...props} />;
 }
 function PizzeriaDashboard(props) {
-  //return <PPDashboard {...props} />;
-  return (
-    <Container className="mt-4">
-      <h2>Pizzeria Dashboard (Coming Soon)</h2>
-      <p>This is a placeholder for another dashboard view. Add your charts/tables here.</p>
-    </Container>
-  );
+  return <PPDashboard {...props} />;
 }
 
 function CustomersDashboard(props) {
@@ -197,7 +191,6 @@ function drawDoughnutChart(container, { labels, values, colors }) {
     .attr("font-size", Math.max(Math.min(width, height) / 24, 10));
 }
 
-
 function drawTreemap(container, data) {
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
@@ -212,9 +205,6 @@ function drawTreemap(container, data) {
     .attr("preserveAspectRatio", "xMinYMin meet")
     .style("display", "block");
 
-  const format = d3.format(",d");
-  const color = d3.scaleOrdinal(d3.schemeCategory10);
-
   const root = d3.hierarchy(data)
     .sum(d => d.value)
     .sort((a, b) => b.value - a.value);
@@ -223,49 +213,27 @@ function drawTreemap(container, data) {
     .size([width, height])
     .padding(1)(root);
 
-  let group = svg.append("g").call(render, root);
+  const color = d3.scaleOrdinal(d3.schemeCategory10);
 
-  function render(group, root) {
-    const node = group
-      .selectAll("g")
-      .data(root.children)
-      .join("g")
-      .attr("transform", d => `translate(${d.x0},${d.y0})`);
+  const leaf = svg.selectAll("g")
+    .data(root.leaves())
+    .join("g")
+    .attr("transform", d => `translate(${d.x0},${d.y0})`);
 
-    node.append("rect")
-      .attr("id", d => (d.data.name || "unknown").replace(/\s+/g, "_"))
-      .attr("fill", d => color(d.data.name))
-      .attr("width", d => d.x1 - d.x0)
-      .attr("height", d => d.y1 - d.y0)
-      .on("click", (event, d) => zoomIn(d));
+  leaf.append("rect")
+    .attr("id", d => (d.leafUid = (d.data && d.data.name) ? d.data.name : "unknown").replace(/\s+/g, "_"))
+    .attr("fill", d => d.parent && d.parent.data && d.parent.data.name ? color(d.parent.data.name) : "#ccc")
+    .attr("width", d => d.x1 - d.x0)
+    .attr("height", d => d.y1 - d.y0);
 
-    node.append("text")
-      .attr("x", 4)
-      .attr("y", 13)
-      .text(d => d.data.name);
-
-    group.append("rect")
-      .attr("pointer-events", "all")
-      .attr("fill", "none")
-      .attr("stroke", "#ccc")
-      .attr("width", width)
-      .attr("height", height)
-      .on("click", () => zoomOut(root.parent));
-  }
-
-  function zoomIn(d) {
-    const newRoot = d;
-    const t = svg.transition().duration(750);
-    group.remove();
-    group = svg.append("g").call(render, newRoot);
-  }
-
-  function zoomOut(d) {
-    if (!d) return;
-    const t = svg.transition().duration(750);
-    group.remove();
-    group = svg.append("g").call(render, d);
-  }
+  leaf.append("text")
+    .attr("clip-path", d => `url(#${d.leafUid})`)
+    .selectAll("tspan")
+    .data(d => (d.data && d.data.name ? d.data.name.split(/\s+/) : [""]))
+    .join("tspan")
+    .attr("x", 4)
+    .attr("y", (d, i) => 13 + i * 10)
+    .text(d => d);
 }
 
 // SVG to PNG helper using canvg
@@ -379,31 +347,6 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     },
     [data, selectedProduct, selectedStore]
   );
-
-  const treemapRef = useD3Chart(
-  drawTreemap,
-  {
-    name: "root",
-    children: [...new Set(data
-      .filter(row =>
-        (selectedProduct ? row.product_name === selectedProduct : true) &&
-        (selectedStore ? row.store_name === selectedStore : true)
-      )
-      .map(row => row.product_name.trim().toLowerCase()) // normalize
-    )].map(name => ({
-      name,
-      value: data
-        .filter(row =>
-          (selectedProduct ? row.product_name === selectedProduct : true) &&
-          (selectedStore ? row.store_name === selectedStore : true) &&
-          row.product_name.trim().toLowerCase() === name
-        )
-        .reduce((a, b) => a + Number(b.revenue), 0)
-    }))
-  },
-  [data, selectedProduct, selectedStore]
-);
-
   
   const tableRef = useRef();
 
@@ -708,17 +651,6 @@ function Dashboard({ token, onLogout, persona, loginName }) {
         </Col>
       </Row>
 
-      <Row>
-       <Col md={3} className="mb-4">
-          <Card>
-            <Card.Body style={{ minHeight: 300, height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-              <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
-            </Card.Body>
-            <Card.Footer className="text-center">Revenue Treemap</Card.Footer>
-          </Card>
-        </Col>
-      </Row>
-
       <div ref={tableRef}>
         <Table striped bordered hover size="sm" className="mt-4">
           <thead>
@@ -853,23 +785,39 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
   );
 
   const treemapRef = useD3Chart(
-    drawTreemap,
-    {
-      name: "root",
-      children: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_id === selectedProduct : true) &&
+  drawTreemap,
+  {
+    name: "root",
+    children: [...new Set(data
+      .filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.product_id))].map(name => ({
-        name,
-        value: data.filter(row =>
-          (selectedProduct ? row.product_id === selectedProduct : true) &&
+      )
+      .map(row => row.category)
+    )].map(category => ({
+      name: category,
+      children: [...new Set(data
+        .filter(row =>
+          (selectedProduct ? row.product_name === selectedProduct : true) &&
           (selectedStore ? row.store_name === selectedStore : true) &&
-          row.product_id === name
-        ).reduce((a, b) => a + Number(b.revenue), 0)
+          row.category === category
+        )
+        .map(row => row.product_name)
+      )].map(product => ({
+        name: product,
+        value: data
+          .filter(row =>
+            (selectedProduct ? row.product_name === selectedProduct : true) &&
+            (selectedStore ? row.store_name === selectedStore : true) &&
+            row.category === category &&
+            row.product_name === product
+          )
+          .reduce((a, b) => a + Number(b.revenue), 0)
       }))
-    },
-    [data, selectedProduct, selectedStore]
-  );
+    }))
+  },
+  [data, selectedProduct, selectedStore]
+);
 
   const tableRef = useRef();
 
