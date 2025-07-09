@@ -675,7 +675,41 @@ if (loading) return <Spinner animation="border" />;
         </Col>
 
         <Col md={4} className="text-end">
-          {showEmailForm ? (
+            {showSubscribeForm ? (
+            <>
+              <Form.Control
+                type="text"
+                placeholder="Repeat Frequency (e.g., daily, weekly)"
+                onChange={(e) => setRepeatFrequency(e.target.value)}
+                className="mb-2"
+              />
+              <Form.Control
+                type="time"
+                placeholder="Scheduled Time"
+                onChange={(e) => setScheduledTime(e.target.value)}
+                className="mb-2"
+              />
+              <Form.Select
+                onChange={(e) => setReportFormat(e.target.value)}
+                className="mb-2"
+              >
+                <option value="">Select Format</option>
+                <option value="pdf">PDF</option>
+                <option value="excel">Excel</option>
+              </Form.Select>
+              <Button onClick={handleSubscribeSubmit} size="sm" variant="success">
+                Submit Subscription
+              </Button>{' '}
+              <Button onClick={() => setShowSubscribeForm(false)} size="sm" variant="secondary">
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => setShowSubscribeForm(true)} size="sm" variant="warning">
+              Subscribe
+            </Button>
+          )}
+            {showEmailForm ? (
             <>
               <Form.Control
                 type="email"
@@ -700,42 +734,6 @@ if (loading) return <Spinner animation="border" />;
           <div className="mt-2">
             <Button onClick={exportExcel} className="me-2" size="sm">Export Excel</Button>
             <Button onClick={exportPDF} className="me-2" size="sm">Export PDF</Button>
-
-{showSubscribeForm ? (
-  <>
-    <Form.Control
-      type="text"
-      placeholder="Repeat Frequency (e.g., daily, weekly)"
-      onChange={(e) => setRepeatFrequency(e.target.value)}
-      className="mb-2"
-    />
-    <Form.Control
-      type="time"
-      placeholder="Scheduled Time"
-      onChange={(e) => setScheduledTime(e.target.value)}
-      className="mb-2"
-    />
-    <Form.Select
-      onChange={(e) => setReportFormat(e.target.value)}
-      className="mb-2"
-    >
-      <option value="">Select Format</option>
-      <option value="pdf">PDF</option>
-      <option value="excel">Excel</option>
-    </Form.Select>
-    <Button onClick={handleSubscribeSubmit} size="sm" variant="success">
-      Submit Subscription
-    </Button>{' '}
-    <Button onClick={() => setShowSubscribeForm(false)} size="sm" variant="secondary">
-      Cancel
-    </Button>
-  </>
-) : (
-  <Button onClick={() => setShowSubscribeForm(true)} size="sm" variant="warning">
-    Subscribe
-  </Button>
-)}
-
             <Button variant="outline-secondary" onClick={onLogout} size="sm">Logout</Button>
           </div>
         </Col>
