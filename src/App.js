@@ -287,7 +287,6 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
-const [showSubscribeForm, setShowSubscribeForm] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
 
   const barRef = useD3Chart(
@@ -606,7 +605,27 @@ const treemapRef = useD3Chart(
   };
 
 
-  if (loading) return <Spinner animation="border" />;
+  
+const handleSubscribeSubmit = async () => {
+  try {
+    const payload = {
+      repeatFrequency,
+      scheduledTime,
+      reportFormat,
+      email: loginName || "",  // use logged-in user email if available
+    };
+    await axios.post(`${API_URL}/api/schedule_report`, payload, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    alert("Subscription scheduled successfully!");
+    setShowSubscribeForm(false);
+  } catch (error) {
+    alert("Failed to schedule subscription.");
+  }
+};
+
+
+if (loading) return <Spinner animation="border" />;
 
   return (
     <Container>
@@ -615,42 +634,6 @@ const treemapRef = useD3Chart(
         Logged in as: {loginName} {persona && <>({persona})</>}
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
-        <Row className="mb-3">
-          <Col md={12} className="text-end">
-            <Button variant="primary" onClick={() => setShowSubscribeForm(!showSubscribeForm)}>
-              {showSubscribeForm ? "Hide Subscribe Form" : "Subscribe"}
-            </Button>
-          </Col>
-        </Row>
-        {showSubscribeForm && (
-          <Row className="mb-3">
-            <Col md={4}>
-              <Form.Group>
-                <Form.Label>Repeat Frequency</Form.Label>
-                <Form.Select>
-                  <option>Hourly</option>
-                  <option>Daily</option>
-                  <option>Weekly</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={4}>
-              <Form.Group>
-                <Form.Label>Scheduled Time</Form.Label>
-                <Form.Control type="time" />
-              </Form.Group>
-            </Col>
-            <Col md={4}>
-              <Form.Group>
-                <Form.Label>Report Format</Form.Label>
-                <Form.Select>
-                  <option>CSV</option>
-                  <option>PPT</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
-          </Row>
-        )}
 
       <Row className="my-3">
         <Col md={4}>
