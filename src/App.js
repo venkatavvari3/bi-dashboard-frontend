@@ -705,7 +705,7 @@ if (loading) return <Spinner animation="border" />;
               </Button>
             </>
           ) : (
-            <Button onClick={() => setShowSubscribeForm(true)} size="sm" variant="warning">
+            <Button onClick={() => setShowSubscribeForm(true)} size="sm" variant="warning" className="me-2">
               Subscribe
             </Button>
           )}
