@@ -279,7 +279,44 @@ const svgToPngDataUrl = async (svgElement) => {
 };
 
 function Dashboard({ token, onLogout, persona, loginName }) {
-  const [data, setData] = useState([]);
+  
+  const [bookmarks, setBookmarks] = useState(() => {
+    const saved = localStorage.getItem("dashboardBookmarks");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [bookmarkName, setBookmarkName] = useState("");
+
+  const saveBookmark = () => {
+    if (!bookmarkName) return;
+    const newBookmark = {
+      name: bookmarkName,
+      product: selectedProduct,
+      store: selectedStore
+    };
+    const updated = [...bookmarks, newBookmark];
+    setBookmarks(updated);
+    localStorage.setItem("dashboardBookmarks", JSON.stringify(updated));
+    setBookmarkName("");
+  };
+
+  const applyBookmark = (bookmark) => {
+    setSelectedProduct(bookmark.product);
+    setSelectedStore(bookmark.store);
+  };
+
+  const deleteBookmark = (name) => {
+    const updated = bookmarks.filter(b => b.name !== name);
+    setBookmarks(updated);
+    localStorage.setItem("dashboardBookmarks", JSON.stringify(updated));
+  };
+
+  const renameBookmark = (oldName, newName) => {
+    const updated = bookmarks.map(b => b.name === oldName ? { ...b, name: newName } : b);
+    setBookmarks(updated);
+    localStorage.setItem("dashboardBookmarks", JSON.stringify(updated));
+  };
+
+const [data, setData] = useState([]);
   const [products, setProducts] = useState([]);
   const [stores, setStores] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState("");
