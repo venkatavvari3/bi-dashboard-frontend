@@ -316,6 +316,20 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     alert(`Bookmark renamed to '${renameBookmark}'`);
   };
 
+  
+  const handleDeleteBookmark = () => {
+    if (!editBookmark) {
+      alert("Please select a bookmark to delete.");
+      return;
+    }
+    const newBookmarks = { ...bookmarks };
+    delete newBookmarks[editBookmark];
+    setBookmarks(newBookmarks);
+    setEditBookmark("");
+    setRenameBookmark("");
+    alert("Bookmark deleted.");
+  };
+
   const [data, setData] = useState([]);
   const [products, setProducts] = useState([]);
   const [stores, setStores] = useState([]);
