@@ -294,8 +294,9 @@ const [selectedVisuals, setSelectedVisuals] = useState({ chart: true, table: tru
     const newBookmarks = { ...bookmarks };
     newBookmarks[bookmarkName] = {
       product: selectedProduct,
-      store: selectedStore
-    };
+      store: selectedStore,
+    visuals: selectedVisuals
+  };
     setBookmarks(newBookmarks);
     alert(`Bookmark '${bookmarkName}' saved!`);
   };
@@ -325,6 +326,7 @@ const handleApplyBookmark = (name) => {
   const bookmark = bookmarks[name];
   setSelectedProduct(bookmark.product || "");
   setSelectedStore(bookmark.store || "");
+    setSelectedVisuals(bookmark.visuals || { chart: true, table: true });
   setSelectedVisuals(bookmark.visuals || { chart: true, table: true });
   setSelectedBookmark(name);
 };
@@ -910,6 +912,7 @@ if (loading) return <Spinner animation="border" />;
         </Col>
       </Row>
 
+       {selectedVisuals.chart && (<Row>
        <Col md={3} className="mb-4">
           <Card>
             <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
@@ -920,7 +923,7 @@ if (loading) return <Spinner animation="border" />;
         </Col>
       </Row>
         
-      <div ref={tableRef}>
+      {selectedVisuals.table && (<div ref={tableRef}>
         <Table striped bordered hover size="sm" className="mt-4">
           <thead>
             <tr>
@@ -1400,7 +1403,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
           </Card>
         </Col>
       </Row>
-      <div ref={tableRef}>
+      {selectedVisuals.table && (<div ref={tableRef}>
         <Table striped bordered hover size="sm" className="mt-4">
           <thead>
             <tr>
