@@ -282,6 +282,8 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   const [bookmarkName, setBookmarkName] = useState("");
   const [selectedBookmark, setSelectedBookmark] = useState("");
   const [bookmarks, setBookmarks] = useState({});
+const [selectedVisuals, setSelectedVisuals] = useState({ chart: true, table: true });
+
   const [editBookmark, setEditBookmark] = useState("");
   const [renameBookmark, setRenameBookmark] = useState("");
   const handleSaveBookmark = () => {
@@ -317,7 +319,18 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   };
 
   
-  const handleDeleteBookmark = () => {
+  
+const handleApplyBookmark = (name) => {
+  if (!name || !bookmarks[name]) return;
+  const bookmark = bookmarks[name];
+  setSelectedProduct(bookmark.product || "");
+  setSelectedStore(bookmark.store || "");
+  setSelectedVisuals(bookmark.visuals || { chart: true, table: true });
+  setSelectedBookmark(name);
+};
+
+
+const handleDeleteBookmark = () => {
     if (!editBookmark) {
       alert("Please select a bookmark to delete.");
       return;
@@ -789,6 +802,22 @@ if (loading) return <Spinner animation="border" />;
           </div>
         </Col>
       </Row>
+
+<Form.Group className="mb-3">
+  <Form.Check
+    type="checkbox"
+    label="Show Charts"
+    checked={selectedVisuals.chart}
+    onChange={() => setSelectedVisuals(prev => ({ ...prev, chart: !prev.chart }))}
+  />
+  <Form.Check
+    type="checkbox"
+    label="Show Table"
+    checked={selectedVisuals.table}
+    onChange={() => setSelectedVisuals(prev => ({ ...prev, table: !prev.table }))}
+  />
+</Form.Group>
+
 <Row className="mb-3">
   <Col md={4}>
     <Form.Group>
@@ -846,7 +875,7 @@ if (loading) return <Spinner animation="border" />;
 
 
       {/* All graphs in one row, 99% size within columns */}
-      <Row>
+      {selectedVisuals.chart && (<Row>
         <Col md={3} className="mb-4">
           <Card>
             <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
@@ -881,7 +910,7 @@ if (loading) return <Spinner animation="border" />;
         </Col>
       </Row>
 
-       <Row>
+       {selectedVisuals.chart && (<Row>
        <Col md={3} className="mb-4">
           <Card>
             <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
