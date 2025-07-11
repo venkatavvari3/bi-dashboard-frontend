@@ -279,6 +279,20 @@ const svgToPngDataUrl = async (svgElement) => {
 };
 
 function Dashboard({ token, onLogout, persona, loginName }) {
+  const handleSaveBookmark = () => {
+    if (!bookmarkName) {
+      alert("Please enter a bookmark name.");
+      return;
+    }
+    const newBookmarks = { ...bookmarks };
+    newBookmarks[bookmarkName] = {
+      product: selectedProduct,
+      store: selectedStore
+    };
+    setBookmarks(newBookmarks);
+    alert(`Bookmark '${bookmarkName}' saved!`);
+  };
+
   const [data, setData] = useState([]);
   const [products, setProducts] = useState([]);
   const [stores, setStores] = useState([]);
@@ -288,8 +302,6 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   const [error, setError] = useState("");
   
 const [showSubscribeForm, setShowSubscribeForm] = useState(false);
-const [bookmarkName, setBookmarkName] = useState("");
-
 const [repeatFrequency, setRepeatFrequency] = useState("");
 const [scheduledTime, setScheduledTime] = useState("");
 const [reportFormat, setReportFormat] = useState("");
