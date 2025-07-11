@@ -279,6 +279,10 @@ const svgToPngDataUrl = async (svgElement) => {
 };
 
 function Dashboard({ token, onLogout, persona, loginName }) {
+  const [bookmarkName, setBookmarkName] = useState("");
+  const [bookmarks, setBookmarks] = useState({});
+  const [editBookmark, setEditBookmark] = useState("");
+  const [renameBookmark, setRenameBookmark] = useState("");
   const handleSaveBookmark = () => {
     if (!bookmarkName) {
       alert("Please enter a bookmark name.");
