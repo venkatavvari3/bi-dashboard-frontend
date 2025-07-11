@@ -279,44 +279,7 @@ const svgToPngDataUrl = async (svgElement) => {
 };
 
 function Dashboard({ token, onLogout, persona, loginName }) {
-  
-  const [bookmarks, setBookmarks] = useState(() => {
-    const saved = localStorage.getItem("dashboardBookmarks");
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [bookmarkName, setBookmarkName] = useState("");
-
-  const saveBookmark = () => {
-    if (!bookmarkName) return;
-    const newBookmark = {
-      name: bookmarkName,
-      product: selectedProduct,
-      store: selectedStore
-    };
-    const updated = [...bookmarks, newBookmark];
-    setBookmarks(updated);
-    localStorage.setItem("dashboardBookmarks", JSON.stringify(updated));
-    setBookmarkName("");
-  };
-
-  const applyBookmark = (bookmark) => {
-    setSelectedProduct(bookmark.product);
-    setSelectedStore(bookmark.store);
-  };
-
-  const deleteBookmark = (name) => {
-    const updated = bookmarks.filter(b => b.name !== name);
-    setBookmarks(updated);
-    localStorage.setItem("dashboardBookmarks", JSON.stringify(updated));
-  };
-
-  const renameBookmark = (oldName, newName) => {
-    const updated = bookmarks.map(b => b.name === oldName ? { ...b, name: newName } : b);
-    setBookmarks(updated);
-    localStorage.setItem("dashboardBookmarks", JSON.stringify(updated));
-  };
-
-const [data, setData] = useState([]);
+  const [data, setData] = useState([]);
   const [products, setProducts] = useState([]);
   const [stores, setStores] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState("");
@@ -775,6 +738,61 @@ if (loading) return <Spinner animation="border" />;
           </div>
         </Col>
       </Row>
+<Row className="mb-3">
+  <Col md={4}>
+    <Form.Group>
+      <Form.Label><b>Save Current Bookmark</b></Form.Label>
+      <Form.Control
+        type="text"
+        placeholder="Enter bookmark name"
+        value={bookmarkName}
+        onChange={e => setBookmarkName(e.target.value)}
+        className="mb-2"
+      />
+      <Button onClick={handleSaveBookmark} size="sm" variant="primary">Save Bookmark</Button>
+    </Form.Group>
+  </Col>
+  <Col md={4}>
+    <Form.Group>
+      <Form.Label><b>Apply Bookmark</b></Form.Label>
+      <Form.Select
+        value={selectedBookmark}
+        onChange={e => handleApplyBookmark(e.target.value)}
+        className="mb-2"
+      >
+        <option value="">Select Bookmark</option>
+        {Object.keys(bookmarks).map(name => (
+          <option key={name} value={name}>{name}</option>
+        ))}
+      </Form.Select>
+    </Form.Group>
+  </Col>
+  <Col md={4}>
+    <Form.Group>
+      <Form.Label><b>Edit/Delete Bookmark</b></Form.Label>
+      <Form.Select
+        value={editBookmark}
+        onChange={e => setEditBookmark(e.target.value)}
+        className="mb-2"
+      >
+        <option value="">Select Bookmark</option>
+        {Object.keys(bookmarks).map(name => (
+          <option key={name} value={name}>{name}</option>
+        ))}
+      </Form.Select>
+      <Form.Control
+        type="text"
+        placeholder="Rename selected bookmark"
+        value={renameBookmark}
+        onChange={e => setRenameBookmark(e.target.value)}
+        className="mb-2"
+      />
+      <Button onClick={handleRenameBookmark} size="sm" variant="warning" className="me-2">Rename</Button>
+      <Button onClick={handleDeleteBookmark} size="sm" variant="danger">Delete</Button>
+    </Form.Group>
+  </Col>
+</Row>
+
 
       {/* All graphs in one row, 99% size within columns */}
       <Row>
