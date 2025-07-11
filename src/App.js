@@ -288,6 +288,8 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   const [error, setError] = useState("");
   
 const [showSubscribeForm, setShowSubscribeForm] = useState(false);
+const [bookmarkName, setBookmarkName] = useState("");
+
 const [repeatFrequency, setRepeatFrequency] = useState("");
 const [scheduledTime, setScheduledTime] = useState("");
 const [reportFormat, setReportFormat] = useState("");
@@ -1415,24 +1417,6 @@ export default function App() {
   const [persona, setPersona] = useState("");
   const [loginName, setLoginName] = useState("");
   const [selectedDashboard, setSelectedDashboard] = useState("sales");
-
-  const handleSaveBookmark = () => {
-    if (!bookmarkName) {
-      alert("Please enter a bookmark name.");
-      return;
-    }
-    const newBookmarks = {
-      ...bookmarks,
-      [bookmarkName]: {
-        product: selectedProduct,
-        store: selectedStore
-      }
-    };
-    setBookmarks(newBookmarks);
-    setBookmarkName("");
-    alert("Bookmark saved!");
-  };
-
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
