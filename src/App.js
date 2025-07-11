@@ -1362,6 +1362,14 @@ export default function App() {
   const [selectedDashboard, setSelectedDashboard] = useState("sales");
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get("token");
+    if (urlToken) {
+      setToken(urlToken);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+  useEffect(() => {
     if (token) {
       localStorage.setItem('token', token);
       try {
