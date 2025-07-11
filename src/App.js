@@ -280,6 +280,7 @@ const svgToPngDataUrl = async (svgElement) => {
 
 function Dashboard({ token, onLogout, persona, loginName }) {
   const [bookmarkName, setBookmarkName] = useState("");
+  const [selectedBookmark, setSelectedBookmark] = useState("");
   const [bookmarks, setBookmarks] = useState({});
   const [editBookmark, setEditBookmark] = useState("");
   const [renameBookmark, setRenameBookmark] = useState("");
@@ -305,12 +306,12 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   
-const [showSubscribeForm, setShowSubscribeForm] = useState(false);
-const [repeatFrequency, setRepeatFrequency] = useState("");
-const [scheduledTime, setScheduledTime] = useState("");
-const [reportFormat, setReportFormat] = useState("");
-
-const [email, setEmail] = useState("");
+  const [showSubscribeForm, setShowSubscribeForm] = useState(false);
+  const [repeatFrequency, setRepeatFrequency] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
+  const [reportFormat, setReportFormat] = useState("");
+  
+  const [email, setEmail] = useState("");
   const [showEmailForm, setShowEmailForm] = useState(false);
 
   const barRef = useD3Chart(
