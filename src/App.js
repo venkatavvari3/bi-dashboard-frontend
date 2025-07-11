@@ -298,6 +298,24 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     alert(`Bookmark '${bookmarkName}' saved!`);
   };
 
+  const handleRenameBookmark = () => {
+    if (!editBookmark || !renameBookmark) {
+      alert("Please select a bookmark and enter a new name.");
+      return;
+    }
+    if (bookmarks[renameBookmark]) {
+      alert("A bookmark with the new name already exists.");
+      return;
+    }
+    const newBookmarks = { ...bookmarks };
+    newBookmarks[renameBookmark] = newBookmarks[editBookmark];
+    delete newBookmarks[editBookmark];
+    setBookmarks(newBookmarks);
+    setEditBookmark("");
+    setRenameBookmark("");
+    alert(`Bookmark renamed to '${renameBookmark}'`);
+  };
+
   const [data, setData] = useState([]);
   const [products, setProducts] = useState([]);
   const [stores, setStores] = useState([]);
