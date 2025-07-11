@@ -293,7 +293,6 @@ const [selectedVisuals, setSelectedVisuals] = useState({ chart: true, table: tru
     }
     const newBookmarks = { ...bookmarks };
     newBookmarks[bookmarkName] = {
-    visuals: selectedVisuals,
       product: selectedProduct,
       store: selectedStore
     };
@@ -911,8 +910,9 @@ if (loading) return <Spinner animation="border" />;
         </Col>
       </Row>
 
-       {selectedVisuals.chart && (<Row>
 {selectedVisuals.chart && (
+  <Row>
+       <Col md={3} className="mb-4">
           <Card>
             <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
               <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
@@ -921,8 +921,8 @@ if (loading) return <Spinner animation="border" />;
           </Card>
         </Col>
       </Row>
+  </Row>
 )}
-        
       <div ref={tableRef}>
         <Table striped bordered hover size="sm" className="mt-4">
           <thead>
