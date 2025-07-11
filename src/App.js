@@ -910,7 +910,6 @@ if (loading) return <Spinner animation="border" />;
         </Col>
       </Row>
 
-       {selectedVisuals.chart && (<Row>
        <Col md={3} className="mb-4">
           <Card>
             <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
@@ -920,7 +919,7 @@ if (loading) return <Spinner animation="border" />;
           </Card>
         </Col>
       </Row>
-        )
+        
       <div ref={tableRef}>
         <Table striped bordered hover size="sm" className="mt-4">
           <thead>
@@ -1400,7 +1399,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
             <Card.Footer className="text-center">Revenue Treemap</Card.Footer>
           </Card>
         </Col>
-      </Row>)
+      </Row>
       <div ref={tableRef}>
         <Table striped bordered hover size="sm" className="mt-4">
           <thead>
