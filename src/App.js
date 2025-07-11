@@ -279,6 +279,10 @@ const svgToPngDataUrl = async (svgElement) => {
 };
 
 function Dashboard({ token, onLogout, persona, loginName }) {
+const [bookmarkName, setBookmarkName] = useState("");
+const [bookmarks, setBookmarks] = useState({});
+const [editBookmark, setEditBookmark] = useState("");
+const [renameBookmark, setRenameBookmark] = useState("");
   const [data, setData] = useState([]);
   const [products, setProducts] = useState([]);
   const [stores, setStores] = useState([]);
