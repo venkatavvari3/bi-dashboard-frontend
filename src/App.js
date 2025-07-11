@@ -920,7 +920,7 @@ if (loading) return <Spinner animation="border" />;
           </Card>
         </Col>
       </Row>
-        
+        )
       <div ref={tableRef}>
         <Table striped bordered hover size="sm" className="mt-4">
           <thead>
@@ -1400,7 +1400,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
             <Card.Footer className="text-center">Revenue Treemap</Card.Footer>
           </Card>
         </Col>
-      </Row>
+      </Row>)
       <div ref={tableRef}>
         <Table striped bordered hover size="sm" className="mt-4">
           <thead>
