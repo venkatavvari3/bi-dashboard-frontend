@@ -279,10 +279,6 @@ const svgToPngDataUrl = async (svgElement) => {
 };
 
 function Dashboard({ token, onLogout, persona, loginName }) {
-const [bookmarkName, setBookmarkName] = useState("");
-const [bookmarks, setBookmarks] = useState({});
-const [editBookmark, setEditBookmark] = useState("");
-const [renameBookmark, setRenameBookmark] = useState("");
   const [data, setData] = useState([]);
   const [products, setProducts] = useState([]);
   const [stores, setStores] = useState([]);
@@ -1419,6 +1415,24 @@ export default function App() {
   const [persona, setPersona] = useState("");
   const [loginName, setLoginName] = useState("");
   const [selectedDashboard, setSelectedDashboard] = useState("sales");
+
+  const handleSaveBookmark = () => {
+    if (!bookmarkName) {
+      alert("Please enter a bookmark name.");
+      return;
+    }
+    const newBookmarks = {
+      ...bookmarks,
+      [bookmarkName]: {
+        product: selectedProduct,
+        store: selectedStore
+      }
+    };
+    setBookmarks(newBookmarks);
+    setBookmarkName("");
+    alert("Bookmark saved!");
+  };
+
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
