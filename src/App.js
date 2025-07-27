@@ -874,57 +874,59 @@ if (loading) return <Spinner animation="border" />;
 </Row>
 
 
-      {/* All graphs in one row, 99% size within columns */}
-      {selectedVisuals.chart && (<Row>
-        <Col md={3} className="mb-4">
-          <Card>
-            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-              <div ref={lineRef} style={{ width: "99%", height: "99%" }}></div>
-            </Card.Body>
-            <Card.Footer className="text-center">Total Revenue Over Time</Card.Footer>
-          </Card>
-        </Col>
-        <Col md={3} className="mb-4">
-          <Card>
-            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-              <div ref={barRef} style={{ width: "99%", height: "99%" }}></div>
-            </Card.Body>
-            <Card.Footer className="text-center">Revenue by Product</Card.Footer>
-          </Card>
-        </Col>
-        <Col md={3} className="mb-4">
-          <Card>
-            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-              <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
-            </Card.Body>
-            <Card.Footer className="text-center">Revenue by Store</Card.Footer>
-          </Card>
-        </Col>
-        <Col md={3} className="mb-4">
-          <Card>
-            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-              <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
-            </Card.Body>
-            <Card.Footer className="text-center">Units Sold by Category</Card.Footer>
-          </Card>
-        </Col>
-      </Row>
-
-       {selectedVisuals.chart && (<Row>
+{/* All graphs in one row, 99% size within columns */}
 {selectedVisuals.chart && (
-       <Col md={3} className="mb-4">
-          <Card>
-            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-              <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
-            </Card.Body>
-            <Card.Footer className="text-center">Revenue Treemap</Card.Footer>
-          </Card>
-        </Col>
-      </Row>
-        
+  <Row>
+    <Col md={3} className="mb-4">
+      <Card>
+        <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+          <div ref={lineRef} style={{ width: "99%", height: "99%" }}></div>
+        </Card.Body>
+        <Card.Footer className="text-center">Total Revenue Over Time</Card.Footer>
+      </Card>
+    </Col>
+    <Col md={3} className="mb-4">
+      <Card>
+        <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+          <div ref={barRef} style={{ width: "99%", height: "99%" }}></div>
+        </Card.Body>
+        <Card.Footer className="text-center">Revenue by Product</Card.Footer>
+      </Card>
+    </Col>
+    <Col md={3} className="mb-4">
+      <Card>
+        <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+          <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
+        </Card.Body>
+        <Card.Footer className="text-center">Revenue by Store</Card.Footer>
+      </Card>
+    </Col>
+    <Col md={3} className="mb-4">
+      <Card>
+        <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+          <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
+        </Card.Body>
+        <Card.Footer className="text-center">Units Sold by Category</Card.Footer>
+      </Card>
+    </Col>
+  </Row>
 )}
-      <div ref={tableRef}>
-        <Table striped bordered hover size="sm" className="mt-4">
+
+{selectedVisuals.chart && (
+  <Row>
+    <Col md={3} className="mb-4">
+      <Card>
+        <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+          <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
+        </Card.Body>
+        <Card.Footer className="text-center">Revenue Treemap</Card.Footer>
+      </Card>
+    </Col>
+  </Row>
+)}
+
+<div ref={tableRef}>
+  <Table striped bordered hover size="sm" className="mt-4">
           <thead>
             <tr>
               <th>Date</th>
