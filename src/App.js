@@ -25,7 +25,7 @@ function PizzeriaDashboard(props) {
 
 function CustomersDashboard(props) {
   return (
-    <Container className="mt-4">
+    <Container fluid className="px-2 px-md-3 mt-4">
       <h2>Customers Dashboard (Coming Soon)</h2>
       <p>This is a placeholder for another dashboard view. Add your charts/tables here.</p>
     </Container>
@@ -282,7 +282,6 @@ function Dashboard({ token, onLogout, persona, loginName }) {
   const [bookmarkName, setBookmarkName] = useState("");
   const [selectedBookmark, setSelectedBookmark] = useState("");
   const [bookmarks, setBookmarks] = useState({});
-const [selectedVisuals, setSelectedVisuals] = useState({ chart: true, table: true });
 
   const [editBookmark, setEditBookmark] = useState("");
   const [renameBookmark, setRenameBookmark] = useState("");
@@ -325,7 +324,6 @@ const handleApplyBookmark = (name) => {
   const bookmark = bookmarks[name];
   setSelectedProduct(bookmark.product || "");
   setSelectedStore(bookmark.store || "");
-  setSelectedVisuals(bookmark.visuals || { chart: true, table: true });
   setSelectedBookmark(name);
 };
 
@@ -698,7 +696,7 @@ const handleSubscribeSubmit = async () => {
 if (loading) return <Spinner animation="border" />;
 
   return (
-    <Container>
+    <Container fluid className="px-2 px-md-3">
       <h1 className="mt-3">Sales Dashboard</h1>
       <div className="mb-3" style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#1a73e8' }}>
         Logged in as: {loginName} {persona && <>({persona})</>}
@@ -706,7 +704,7 @@ if (loading) return <Spinner animation="border" />;
       {error && <Alert variant="danger">{error}</Alert>}
 
       <Row className="my-3">
-        <Col md={4}>
+        <Col lg={4} md={6} className="mb-2">
           <Form.Group>
             <Form.Label htmlFor="productDropdown"><b>Product</b></Form.Label>
             <Form.Select
@@ -722,7 +720,7 @@ if (loading) return <Spinner animation="border" />;
           </Form.Group>
         </Col>
 
-        <Col md={4}>
+        <Col lg={4} md={6} className="mb-2">
           <Form.Group>
             <Form.Label htmlFor="storeDropdown"><b>Store</b></Form.Label>
             <Form.Select
@@ -738,43 +736,48 @@ if (loading) return <Spinner animation="border" />;
           </Form.Group>
         </Col>
 
-        <Col md={4} className="text-end">
+        <Col lg={4} md={12} className="d-flex flex-column">
             {showSubscribeForm ? (
-            <>
+            <div className="mb-2">
               <Form.Control
                 type="text"
                 placeholder="Repeat Frequency (e.g., daily, weekly)"
                 onChange={(e) => setRepeatFrequency(e.target.value)}
                 className="mb-2"
+                size="sm"
               />
               <Form.Control
                 type="time"
                 placeholder="Scheduled Time"
                 onChange={(e) => setScheduledTime(e.target.value)}
                 className="mb-2"
+                size="sm"
               />
               <Form.Select
                 onChange={(e) => setReportFormat(e.target.value)}
                 className="mb-2"
+                size="sm"
               >
                 <option value="">Select Format</option>
                 <option value="pdf">PDF</option>
                 <option value="excel">Excel</option>
               </Form.Select>
-              <Button onClick={handleSubscribeSubmit} size="sm" variant="success">
-                Submit Subscription
-              </Button>{' '}
-              <Button onClick={() => setShowSubscribeForm(false)} size="sm" variant="secondary">
-                Cancel
-              </Button>
-            </>
+              <div className="d-flex gap-1">
+                <Button onClick={handleSubscribeSubmit} size="sm" variant="success" className="flex-fill">
+                  Submit
+                </Button>
+                <Button onClick={() => setShowSubscribeForm(false)} size="sm" variant="secondary" className="flex-fill">
+                  Cancel
+                </Button>
+              </div>
+            </div>
           ) : (
-            <Button onClick={() => setShowSubscribeForm(true)} size="sm" variant="warning" className="me-2">
+            <Button onClick={() => setShowSubscribeForm(true)} size="sm" variant="warning" className="mb-2">
               Subscribe
             </Button>
           )}
             {showEmailForm ? (
-            <>
+            <div className="mb-2">
               <Form.Control
                 type="email"
                 placeholder="Enter email"
@@ -783,43 +786,30 @@ if (loading) return <Spinner animation="border" />;
                 size="sm"
                 className="mb-2"
               />
-              <Button onClick={handleEmailMe} className="me-2 mb-2" size="sm" variant="info">
-                Submit Email
-              </Button>
-              <Button variant="outline-secondary" size="sm" onClick={() => setShowEmailForm(false)}>
-                Cancel
-              </Button>
-            </>
+              <div className="d-flex gap-1">
+                <Button onClick={handleEmailMe} className="flex-fill" size="sm" variant="info">
+                  Submit Email
+                </Button>
+                <Button variant="outline-secondary" size="sm" onClick={() => setShowEmailForm(false)} className="flex-fill">
+                  Cancel
+                </Button>
+              </div>
+            </div>
           ) : (
-            <Button onClick={() => setShowEmailForm(true)} className="me-2" size="sm" variant="info">
+            <Button onClick={() => setShowEmailForm(true)} className="mb-2" size="sm" variant="info">
               Send Email
             </Button>
           )}
-          <div className="mt-2">
-            <Button onClick={exportExcel} className="me-2" size="sm">Export Excel</Button>
-            <Button onClick={exportPDF} className="me-2" size="sm">Export PDF</Button>
-            <Button variant="outline-secondary" onClick={onLogout} size="sm">Logout</Button>
+          <div className="export-buttons">
+            <Button onClick={exportExcel} size="sm" className="flex-fill">Export Excel</Button>
+            <Button onClick={exportPDF} size="sm" className="flex-fill">Export PDF</Button>
+            <Button variant="outline-secondary" onClick={onLogout} size="sm" className="flex-fill">Logout</Button>
           </div>
         </Col>
       </Row>
 
-<Form.Group className="mb-3">
-  <Form.Check
-    type="checkbox"
-    label="Show Charts"
-    checked={selectedVisuals.chart}
-    onChange={() => setSelectedVisuals(prev => ({ ...prev, chart: !prev.chart }))}
-  />
-  <Form.Check
-    type="checkbox"
-    label="Show Table"
-    checked={selectedVisuals.table}
-    onChange={() => setSelectedVisuals(prev => ({ ...prev, table: !prev.table }))}
-  />
-</Form.Group>
-
 <Row className="mb-3">
-  <Col md={4}>
+  <Col lg={4} md={6} className="mb-3">
     <Form.Group>
       <Form.Label><b>Save Current Bookmark</b></Form.Label>
       <Form.Control
@@ -828,17 +818,19 @@ if (loading) return <Spinner animation="border" />;
         value={bookmarkName}
         onChange={e => setBookmarkName(e.target.value)}
         className="mb-2"
+        size="sm"
       />
-      <Button onClick={handleSaveBookmark} size="sm" variant="primary">Save Bookmark</Button>
+      <Button onClick={handleSaveBookmark} size="sm" variant="primary" className="w-100">Save Bookmark</Button>
     </Form.Group>
   </Col>
-  <Col md={4}>
+  <Col lg={4} md={6} className="mb-3">
     <Form.Group>
       <Form.Label><b>Apply Bookmark</b></Form.Label>
       <Form.Select
         value={selectedBookmark}
         onChange={e => handleApplyBookmark(e.target.value)}
         className="mb-2"
+        size="sm"
       >
         <option value="">Select Bookmark</option>
         {Object.keys(bookmarks).map(name => (
@@ -847,13 +839,14 @@ if (loading) return <Spinner animation="border" />;
       </Form.Select>
     </Form.Group>
   </Col>
-  <Col md={4}>
+  <Col lg={4} md={12} className="mb-3">
     <Form.Group>
       <Form.Label><b>Edit/Delete Bookmark</b></Form.Label>
       <Form.Select
         value={editBookmark}
         onChange={e => setEditBookmark(e.target.value)}
         className="mb-2"
+        size="sm"
       >
         <option value="">Select Bookmark</option>
         {Object.keys(bookmarks).map(name => (
@@ -866,94 +859,95 @@ if (loading) return <Spinner animation="border" />;
         value={renameBookmark}
         onChange={e => setRenameBookmark(e.target.value)}
         className="mb-2"
+        size="sm"
       />
-      <Button onClick={handleRenameBookmark} size="sm" variant="warning" className="me-2">Rename</Button>
-      <Button onClick={handleDeleteBookmark} size="sm" variant="danger">Delete</Button>
+      <div className="d-flex gap-1">
+        <Button onClick={handleRenameBookmark} size="sm" variant="warning" className="flex-fill">Rename</Button>
+        <Button onClick={handleDeleteBookmark} size="sm" variant="danger" className="flex-fill">Delete</Button>
+      </div>
     </Form.Group>
   </Col>
 </Row>
 
 
-{/* All graphs in one row, 99% size within columns */}
-{selectedVisuals.chart && (
-  <Row>
-    <Col md={3} className="mb-4">
+{/* All graphs in responsive grid */}
+<Row>
+    <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
       <Card>
-        <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+        <Card.Body className="chart-container p-0">
           <div ref={lineRef} style={{ width: "99%", height: "99%" }}></div>
         </Card.Body>
-        <Card.Footer className="text-center">Total Revenue Over Time</Card.Footer>
+        <Card.Footer className="text-center small">Total Revenue Over Time</Card.Footer>
       </Card>
     </Col>
-    <Col md={3} className="mb-4">
+    <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
       <Card>
-        <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+        <Card.Body className="chart-container p-0">
           <div ref={barRef} style={{ width: "99%", height: "99%" }}></div>
         </Card.Body>
-        <Card.Footer className="text-center">Revenue by Product</Card.Footer>
+        <Card.Footer className="text-center small">Revenue by Product</Card.Footer>
       </Card>
     </Col>
-    <Col md={3} className="mb-4">
+    <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
       <Card>
-        <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+        <Card.Body className="chart-container p-0">
           <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
         </Card.Body>
-        <Card.Footer className="text-center">Revenue by Store</Card.Footer>
+        <Card.Footer className="text-center small">Revenue by Store</Card.Footer>
       </Card>
     </Col>
-    <Col md={3} className="mb-4">
+    <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
       <Card>
-        <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+        <Card.Body className="chart-container p-0">
           <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
         </Card.Body>
-        <Card.Footer className="text-center">Units Sold by Category</Card.Footer>
+        <Card.Footer className="text-center small">Units Sold by Category</Card.Footer>
       </Card>
     </Col>
   </Row>
-)}
 
-{selectedVisuals.chart && (
-  <Row>
-    <Col md={3} className="mb-4">
+<Row>
+    <Col lg={6} md={12} className="mb-4">
       <Card>
-        <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+        <Card.Body className="chart-container p-0">
           <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
         </Card.Body>
-        <Card.Footer className="text-center">Revenue Treemap</Card.Footer>
+        <Card.Footer className="text-center small">Revenue Treemap</Card.Footer>
       </Card>
     </Col>
   </Row>
-)}
 
-<div ref={tableRef}>
-  <Table striped bordered hover size="sm" className="mt-4">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Product</th>
-              <th>Category</th>
-              <th>Store</th>
-              <th>Customer</th>
-              <th>Units Sold</th>
-              <th>Revenue</th>
-              <th>Profit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredData.map((row, idx) => (
-              <tr key={idx}>
-                <td>{row.date}</td>
-                <td>{row.product_name}</td>
-                <td>{row.category}</td>
-                <td>{row.store_name}</td>
-                <td>{row.customer_name}</td>
-                <td>{row.units_sold}</td>
-                <td>{row.revenue}</td>
-                <td>{row.profit}</td>
+<div ref={tableRef} className="mt-4">
+  <div className="table-responsive">
+    <Table striped bordered hover size="sm">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Store</th>
+                <th>Customer</th>
+                <th>Units Sold</th>
+                <th>Revenue</th>
+                <th>Profit</th>
               </tr>
-            ))}
-          </tbody>
-        </Table>
+            </thead>
+            <tbody>
+              {filteredData.map((row, idx) => (
+                <tr key={idx}>
+                  <td>{row.date}</td>
+                  <td>{row.product_name}</td>
+                  <td>{row.category}</td>
+                  <td>{row.store_name}</td>
+                  <td>{row.customer_name}</td>
+                  <td>{row.units_sold}</td>
+                  <td>{row.revenue}</td>
+                  <td>{row.profit}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
       </div>
     </Container>
   );
@@ -1288,7 +1282,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
   if (loading) return <Spinner animation="border" />;
 
   return (
-    <Container>
+    <Container fluid className="px-2 px-md-3">
       <h1 className="mt-3">Pizzeria Dashboard</h1>
       <div className="mb-3" style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#1a73e8' }}>
         Logged in as: {loginName} {persona && <>({persona})</>}
@@ -1296,13 +1290,14 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
       {error && <Alert variant="danger">{error}</Alert>}
 
       <Row className="my-3">
-        <Col md={4}>
+        <Col lg={4} md={6} className="mb-2">
           <Form.Group>
             <Form.Label htmlFor="productDropdown"><b>Product</b></Form.Label>
             <Form.Select
               id="productDropdown"
               value={selectedProduct}
               onChange={e => setSelectedProduct(e.target.value)}
+              size="sm"
             >
               <option value="">All Products</option>
               {products.map(p => (
@@ -1312,13 +1307,14 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
           </Form.Group>
         </Col>
 
-        <Col md={4}>
+        <Col lg={4} md={6} className="mb-2">
           <Form.Group>
             <Form.Label htmlFor="storeDropdown"><b>Store</b></Form.Label>
             <Form.Select
               id="storeDropdown"
               value={selectedStore}
               onChange={e => setSelectedStore(e.target.value)}
+              size="sm"
             >
               <option value="">All Stores</option>
               {stores.map(s => (
@@ -1328,9 +1324,9 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
           </Form.Group>
         </Col>
 
-        <Col md={4} className="text-end">
+        <Col lg={4} md={12} className="d-flex flex-column">
           {showEmailForm ? (
-            <>
+            <div className="mb-2">
               <Form.Control
                 type="email"
                 placeholder="Enter email"
@@ -1339,101 +1335,105 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
                 size="sm"
                 className="mb-2"
               />
-              <Button onClick={handleEmailMe} className="me-2 mb-2" size="sm" variant="info">
-                Submit Email
-              </Button>
-              <Button variant="outline-secondary" size="sm" onClick={() => setShowEmailForm(false)}>
-                Cancel
-              </Button>
-            </>
+              <div className="d-flex gap-1">
+                <Button onClick={handleEmailMe} className="flex-fill" size="sm" variant="info">
+                  Submit Email
+                </Button>
+                <Button variant="outline-secondary" size="sm" onClick={() => setShowEmailForm(false)} className="flex-fill">
+                  Cancel
+                </Button>
+              </div>
+            </div>
           ) : (
-            <Button onClick={() => setShowEmailForm(true)} className="me-2" size="sm" variant="info">
+            <Button onClick={() => setShowEmailForm(true)} className="mb-2" size="sm" variant="info">
               Send Email
             </Button>
           )}
-          <div className="mt-2">
-            <Button onClick={exportExcel} className="me-2" size="sm">Export Excel</Button>
-            <Button onClick={exportPDF} className="me-2" size="sm">Export PDF</Button>
-            <Button variant="outline-secondary" onClick={onLogout} size="sm">Logout</Button>
+          <div className="export-buttons">
+            <Button onClick={exportExcel} size="sm" className="flex-fill">Export Excel</Button>
+            <Button onClick={exportPDF} size="sm" className="flex-fill">Export PDF</Button>
+            <Button variant="outline-secondary" onClick={onLogout} size="sm" className="flex-fill">Logout</Button>
           </div>
         </Col>
       </Row>
 
-      {/* All graphs in one row, 99% size within columns */}
+      {/* All graphs in responsive grid */}
       <Row>
-        <Col md={3} className="mb-4">
+        <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
           <Card>
-            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+            <Card.Body className="chart-container p-0">
               <div ref={lineRef} style={{ width: "99%", height: "99%" }}></div>
             </Card.Body>
-            <Card.Footer className="text-center">Total Revenue Over Time</Card.Footer>
+            <Card.Footer className="text-center small">Total Revenue Over Time</Card.Footer>
           </Card>
         </Col>
-        <Col md={3} className="mb-4">
+        <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
           <Card>
-            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+            <Card.Body className="chart-container p-0">
               <div ref={barRef} style={{ width: "99%", height: "99%" }}></div>
             </Card.Body>
-            <Card.Footer className="text-center">Revenue by Product</Card.Footer>
+            <Card.Footer className="text-center small">Revenue by Product</Card.Footer>
           </Card>
         </Col>
-        <Col md={3} className="mb-4">
+        <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
           <Card>
-            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+            <Card.Body className="chart-container p-0">
               <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
             </Card.Body>
-            <Card.Footer className="text-center">Revenue by Store</Card.Footer>
+            <Card.Footer className="text-center small">Revenue by Store</Card.Footer>
           </Card>
         </Col>
-        <Col md={3} className="mb-4">
+        <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
           <Card>
-            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+            <Card.Body className="chart-container p-0">
               <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
             </Card.Body>
-            <Card.Footer className="text-center">Units Sold by Category</Card.Footer>
+            <Card.Footer className="text-center small">Units Sold by Category</Card.Footer>
           </Card>
         </Col>
       </Row>
 
       <Row>
-       <Col md={3} className="mb-4">
+       <Col lg={6} md={12} className="mb-4">
           <Card>
-            <Card.Body style={{ minHeight: 220, height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+            <Card.Body className="chart-container p-0">
               <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
             </Card.Body>
-            <Card.Footer className="text-center">Revenue Treemap</Card.Footer>
+            <Card.Footer className="text-center small">Revenue Treemap</Card.Footer>
           </Card>
         </Col>
       </Row>
-      <div ref={tableRef}>
-        <Table striped bordered hover size="sm" className="mt-4">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Product</th>
-              <th>Category</th>
-              <th>Store</th>
-              <th>Customer</th>
-              <th>Units Sold</th>
-              <th>Revenue</th>
-              <th>Profit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredData.map((row, idx) => (
-              <tr key={idx}>
-                <td>{row.date}</td>
-                <td>{row.product_name}</td>
-                <td>{row.category}</td>
-                <td>{row.store_name}</td>
-                <td>{row.customer_name}</td>
-                <td>{row.units_sold}</td>
-                <td>{row.revenue}</td>
-                <td>{row.profit}</td>
+      <div ref={tableRef} className="mt-4">
+        <div className="table-responsive">
+          <Table striped bordered hover size="sm">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Store</th>
+                <th>Customer</th>
+                <th>Units Sold</th>
+                <th>Revenue</th>
+                <th>Profit</th>
               </tr>
-            ))}
-          </tbody>
-        </Table>
+            </thead>
+            <tbody>
+              {filteredData.map((row, idx) => (
+                <tr key={idx}>
+                  <td>{row.date}</td>
+                  <td>{row.product_name}</td>
+                  <td>{row.category}</td>
+                  <td>{row.store_name}</td>
+                  <td>{row.customer_name}</td>
+                  <td>{row.units_sold}</td>
+                  <td>{row.revenue}</td>
+                  <td>{row.profit}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
       </div>
     </Container>
   );
@@ -1466,30 +1466,38 @@ function Login({ setToken }) {
   };
 
   return (
-    <Container className="mt-5" style={{ maxWidth: 400 }}>
-      <h2>Login</h2>
-      {error && <Alert variant="danger">{error}</Alert>}
-      <input
-        className="form-control my-2"
-        placeholder="Username"
-        value={user}
-        onChange={e => setUser(e.target.value)}
-      />
-      <input
-        className="form-control my-2"
-        placeholder="Password"
-        type="password"
-        value={pass}
-        onChange={e => setPass(e.target.value)}
-      />
-      <Button onClick={login} className="w-100 mb-2">Login</Button>
-      <div className="my-2 text-center">or</div>
-      {/* Google Login Button */}
-      <GoogleLogin
-        onSuccess={onGoogleSuccess}
-        onError={() => setError("Google login failed")}
-        width="100%"
-      />
+    <Container className="mt-5 px-3" style={{ maxWidth: 400 }}>
+      <Card>
+        <Card.Body>
+          <h2 className="text-center mb-4">Login</h2>
+          {error && <Alert variant="danger" className="text-center">{error}</Alert>}
+          <Form.Control
+            className="my-2"
+            placeholder="Username"
+            value={user}
+            onChange={e => setUser(e.target.value)}
+            size="sm"
+          />
+          <Form.Control
+            className="my-2"
+            placeholder="Password"
+            type="password"
+            value={pass}
+            onChange={e => setPass(e.target.value)}
+            size="sm"
+          />
+          <Button onClick={login} className="w-100 mb-2" size="sm">Login</Button>
+          <div className="my-2 text-center small">or</div>
+          {/* Google Login Button */}
+          <div className="d-flex justify-content-center">
+            <GoogleLogin
+              onSuccess={onGoogleSuccess}
+              onError={() => setError("Google login failed")}
+              width="300"
+            />
+          </div>
+        </Card.Body>
+      </Card>
     </Container>
   );
 }
@@ -1536,24 +1544,25 @@ export default function App() {
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <Navbar bg="dark" variant="dark">
-        <Container>
+      <Navbar bg="dark" variant="dark" expand="lg">
+        <Container fluid>
           <Navbar.Brand>BI Dashboard</Navbar.Brand>
           {persona && (
-            <Navbar.Text style={{ color: "#FFD700" }}>
+            <Navbar.Text style={{ color: "#FFD700" }} className="d-none d-md-block">
               &nbsp;Persona: <b>{persona}</b>
             </Navbar.Text>
           )}
         </Container>
       </Navbar>
       {token ? (
-        <div style={{ display: "flex", minHeight: "100vh" }}>
+        <div className="d-flex flex-column flex-lg-row" style={{ minHeight: "calc(100vh - 56px)" }}>
           <Nav
             variant="pills"
-            className="flex-column p-3"
+            className="flex-lg-column p-2 p-lg-3 mobile-stack"
             style={{
-              minWidth: 220,
-              borderRight: "1px solid #eee",
+              minWidth: "100%",
+              borderRight: "none",
+              borderBottom: "1px solid #eee",
               background: "#f8f9fa"
             }}
             activeKey={selectedDashboard}
@@ -1563,16 +1572,17 @@ export default function App() {
               <Nav.Link
                 key={d.key}
                 eventKey={d.key}
+                className="mb-1 mb-lg-2 text-center text-lg-start"
                 style={{
-                  marginBottom: 4,
-                  fontWeight: selectedDashboard === d.key ? "bold" : "normal"
+                  fontWeight: selectedDashboard === d.key ? "bold" : "normal",
+                  fontSize: "0.9rem"
                 }}
               >
                 {d.label}
               </Nav.Link>
             ))}
           </Nav>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1 }} className="overflow-hidden">
             <DashboardComponent
               token={token}
               onLogout={() => setToken('')}
