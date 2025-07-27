@@ -800,11 +800,11 @@ if (loading) return <Spinner animation="border" />;
               Send Email
             </Button>
           )}
-          <div className="export-buttons">
-            <Button onClick={exportExcel} size="sm" className="flex-fill">Export Excel</Button>
-            <Button onClick={exportPDF} size="sm" className="flex-fill">Export PDF</Button>
-            <Button variant="outline-secondary" onClick={onLogout} size="sm" className="flex-fill">Logout</Button>
+          <div className="d-flex gap-1 mb-2">
+            <Button onClick={exportExcel} size="sm" variant="success" className="flex-fill">Export Excel</Button>
+            <Button onClick={exportPDF} size="sm" variant="primary" className="flex-fill">Export PDF</Button>
           </div>
+          <Button variant="outline-secondary" onClick={onLogout} size="sm" className="w-100">Logout</Button>
         </Col>
       </Row>
 
@@ -1349,11 +1349,11 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
               Send Email
             </Button>
           )}
-          <div className="export-buttons">
-            <Button onClick={exportExcel} size="sm" className="flex-fill">Export Excel</Button>
-            <Button onClick={exportPDF} size="sm" className="flex-fill">Export PDF</Button>
-            <Button variant="outline-secondary" onClick={onLogout} size="sm" className="flex-fill">Logout</Button>
+          <div className="d-flex gap-1 mb-2">
+            <Button onClick={exportExcel} size="sm" variant="success" className="flex-fill">Export Excel</Button>
+            <Button onClick={exportPDF} size="sm" variant="primary" className="flex-fill">Export PDF</Button>
           </div>
+          <Button variant="outline-secondary" onClick={onLogout} size="sm" className="w-100">Logout</Button>
         </Col>
       </Row>
 

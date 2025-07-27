@@ -109,18 +109,7 @@ body {
   }
 }
 
-/* Export buttons */
-.export-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.export-buttons .btn {
-  flex: 1;
-  min-width: 120px;
-}
+/* Legacy export buttons - now using Bootstrap flex utilities */
 
 /* Mobile-specific styles */
 @media (max-width: 767.98px) {
@@ -165,15 +154,7 @@ body {
     font-size: 0.75rem;
   }
   
-  /* Stack export buttons vertically on mobile */
-  .export-buttons {
-    flex-direction: column;
-  }
-  
-  .export-buttons .btn {
-    width: 100%;
-    margin-bottom: 0.25rem;
-  }
+  /* Mobile styles are handled by Bootstrap flex utilities */
   
   /* Smaller margins and padding for mobile */
   .mt-4 {
@@ -316,9 +297,7 @@ body {
     padding: 0.375rem 0.75rem;
   }
   
-  .export-buttons .btn {
-    min-width: 100px;
-  }
+  /* Button styles handled by Bootstrap utilities */
 }
 
 /* Large desktop optimizations */
