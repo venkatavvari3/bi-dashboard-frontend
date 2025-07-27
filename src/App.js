@@ -1558,12 +1558,10 @@ export default function App() {
         <div className="d-flex flex-column flex-lg-row" style={{ minHeight: "calc(100vh - 56px)" }}>
           <Nav
             variant="pills"
-            className="flex-lg-column p-2 p-lg-3 mobile-stack"
+            className="flex-lg-column p-2 p-lg-3 mobile-stack bg-light"
             style={{
-              minWidth: "100%",
               borderRight: "none",
-              borderBottom: "1px solid #eee",
-              background: "#f8f9fa"
+              borderBottom: "1px solid #eee"
             }}
             activeKey={selectedDashboard}
             onSelect={setSelectedDashboard}
@@ -1582,7 +1580,7 @@ export default function App() {
               </Nav.Link>
             ))}
           </Nav>
-          <div style={{ flex: 1 }} className="overflow-hidden">
+          <div style={{ flex: 1, minWidth: 0 }} className="overflow-auto">
             <DashboardComponent
               token={token}
               onLogout={() => setToken('')}
