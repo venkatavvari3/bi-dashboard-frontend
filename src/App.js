@@ -278,13 +278,52 @@ const svgToPngDataUrl = async (svgElement) => {
   return canvas.toDataURL('image/png');
 };
 
-function Dashboard({ token, onLogout, persona, loginName }) {
+function Dashboard({ token, persona, loginName }) {
   const [bookmarkName, setBookmarkName] = useState("");
   const [selectedBookmark, setSelectedBookmark] = useState("");
-  const [bookmarks, setBookmarks] = useState({});
+  // Load bookmarks from localStorage or use empty object
+  const [bookmarks, setBookmarks] = useState(() => {
+    try {
+      const savedBookmarks = localStorage.getItem('dashboard-bookmarks');
+      return savedBookmarks ? JSON.parse(savedBookmarks) : {};
+    } catch (error) {
+      console.error('Error loading bookmarks:', error);
+      return {};
+    }
+  });
 
   const [editBookmark, setEditBookmark] = useState("");
   const [renameBookmark, setRenameBookmark] = useState("");
+  
+  // Chart selection state
+  const [selectedCharts, setSelectedCharts] = useState({
+    lineChart: true,
+    barChart: true,
+    pieChart: true,
+    doughnutChart: true,
+    treemapChart: true,
+    dataTable: true
+  });
+
+  // Force chart re-render when charts are toggled
+  const [chartRenderKey, setChartRenderKey] = useState(0);
+
+  // Force chart re-render when selectedCharts changes
+  useEffect(() => {
+    // Small delay to ensure DOM updates before re-rendering charts
+    const timer = setTimeout(() => {
+      // Clear all chart containers and trigger re-render
+      const chartContainers = document.querySelectorAll('.chart-container > div');
+      chartContainers.forEach(container => {
+        if (container) {
+          container.innerHTML = '';
+        }
+      });
+      // Force a state update to trigger re-rendering
+      setChartRenderKey(prev => prev + 1);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [selectedCharts]);
   const handleSaveBookmark = () => {
     if (!bookmarkName) {
       alert("Please enter a bookmark name.");
@@ -293,10 +332,14 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     const newBookmarks = { ...bookmarks };
     newBookmarks[bookmarkName] = {
       product: selectedProduct,
-      store: selectedStore
+      store: selectedStore,
+      charts: selectedCharts
     };
     setBookmarks(newBookmarks);
-    alert(`Bookmark '${bookmarkName}' saved!`);
+    // Persist to localStorage
+    localStorage.setItem('dashboard-bookmarks', JSON.stringify(newBookmarks));
+    setBookmarkName(""); // Clear the input
+    alert(`Bookmark '${bookmarkName}' saved with selected charts!`);
   };
 
   const handleRenameBookmark = () => {
@@ -312,9 +355,33 @@ function Dashboard({ token, onLogout, persona, loginName }) {
     newBookmarks[renameBookmark] = newBookmarks[editBookmark];
     delete newBookmarks[editBookmark];
     setBookmarks(newBookmarks);
+    // Persist to localStorage
+    localStorage.setItem('dashboard-bookmarks', JSON.stringify(newBookmarks));
     setEditBookmark("");
     setRenameBookmark("");
     alert(`Bookmark renamed to '${renameBookmark}'`);
+  };
+
+  // Handle chart selection toggle
+  const handleChartSelection = (chartName) => {
+    setSelectedCharts(prev => ({
+      ...prev,
+      [chartName]: !prev[chartName]
+    }));
+    // Re-rendering is handled by useEffect when selectedCharts changes
+  };
+
+  // Function to select/deselect all charts
+  const handleSelectAllCharts = (selectAll) => {
+    setSelectedCharts({
+      lineChart: selectAll,
+      barChart: selectAll,
+      pieChart: selectAll,
+      doughnutChart: selectAll,
+      treemapChart: selectAll,
+      dataTable: selectAll
+    });
+    // Re-rendering is handled by useEffect when selectedCharts changes
   };
 
   
@@ -325,20 +392,38 @@ const handleApplyBookmark = (name) => {
   setSelectedProduct(bookmark.product || "");
   setSelectedStore(bookmark.store || "");
   setSelectedBookmark(name);
+  
+  // Apply chart selections if available, otherwise show all charts
+  if (bookmark.charts) {
+    setSelectedCharts(bookmark.charts);
+  } else {
+    // For backward compatibility with old bookmarks
+    setSelectedCharts({
+      lineChart: true,
+      barChart: true,
+      pieChart: true,
+      doughnutChart: true,
+      treemapChart: true,
+      dataTable: true
+    });
+  }
+  // Re-rendering is handled by useEffect when selectedCharts changes
 };
 
 
 const handleDeleteBookmark = () => {
-    if (!editBookmark) {
-      alert("Please select a bookmark to delete.");
-      return;
-    }
-    const newBookmarks = { ...bookmarks };
-    delete newBookmarks[editBookmark];
-    setBookmarks(newBookmarks);
-    setEditBookmark("");
-    setRenameBookmark("");
-    alert("Bookmark deleted.");
+    if (!editBookmark) {
+      alert("Please select a bookmark to delete.");
+      return;
+    }
+    const newBookmarks = { ...bookmarks };
+    delete newBookmarks[editBookmark];
+    setBookmarks(newBookmarks);
+    // Persist to localStorage
+    localStorage.setItem('dashboard-bookmarks', JSON.stringify(newBookmarks));
+    setEditBookmark("");
+    setRenameBookmark("");
+    alert("Bookmark deleted.");
   };
 
   const [data, setData] = useState([]);
@@ -375,7 +460,7 @@ const handleDeleteBookmark = () => {
         ).reduce((a, b) => a + Number(b.revenue), 0)
       )
     },
-    [data, selectedProduct, selectedStore]
+    [data, selectedProduct, selectedStore, chartRenderKey]
   );
 
   const pieColors = ["#ff6384", "#ffce56", "#36a2eb", "#9966ff", "#4bc0c0"];
@@ -398,7 +483,7 @@ const handleDeleteBookmark = () => {
       ),
       colors: pieColors
     },
-    [data, selectedProduct, selectedStore]
+    [data, selectedProduct, selectedStore, chartRenderKey]
   );
 
   const lineRef = useD3Chart(
@@ -419,7 +504,7 @@ const handleDeleteBookmark = () => {
         ).reduce((a, b) => a + Number(b.revenue), 0)
       )
     },
-    [data, selectedProduct, selectedStore]
+    [data, selectedProduct, selectedStore, chartRenderKey]
   );
 
   const doughnutColors = ["#ff6384", "#ffce56", "#36a2eb", "#4bc0c0"];
@@ -442,7 +527,7 @@ const handleDeleteBookmark = () => {
       ),
       colors: doughnutColors
     },
-    [data, selectedProduct, selectedStore]
+    [data, selectedProduct, selectedStore, chartRenderKey]
   );
   
   const tableRef = useRef();
@@ -479,7 +564,7 @@ const treemapRef = useD3Chart(
       }))
     }))
   },
-  [data, selectedProduct, selectedStore]
+  [data, selectedProduct, selectedStore, chartRenderKey]
 );
 
   // Fetch products and stores
@@ -804,7 +889,6 @@ if (loading) return <Spinner animation="border" />;
             <Button onClick={exportExcel} size="sm" variant="success" className="flex-fill">Export Excel</Button>
             <Button onClick={exportPDF} size="sm" variant="primary" className="flex-fill">Export PDF</Button>
           </div>
-          <Button variant="outline-secondary" onClick={onLogout} size="sm" className="w-100">Logout</Button>
         </Col>
       </Row>
 
@@ -869,91 +953,188 @@ if (loading) return <Spinner animation="border" />;
   </Col>
 </Row>
 
+{/* Chart Selection Interface */}
+<Row className="mb-3">
+  <Col>
+    <Card className="mb-3">
+      <Card.Header className="d-flex justify-content-between align-items-center">
+        <h6 className="mb-0">Select Charts for Bookmark</h6>
+        <div>
+          <Button 
+            size="sm" 
+            variant="outline-primary" 
+            className="me-2"
+            onClick={() => handleSelectAllCharts(true)}
+          >
+            Select All
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline-secondary"
+            onClick={() => handleSelectAllCharts(false)}
+          >
+            Deselect All
+          </Button>
+        </div>
+      </Card.Header>
+      <Card.Body className="py-2">
+        <Row>
+          <Col md={2} sm={4} xs={6} className="mb-2">
+            <Form.Check
+              type="checkbox"
+              id="lineChart"
+              label="Revenue Over Time"
+              checked={selectedCharts.lineChart}
+              onChange={() => handleChartSelection('lineChart')}
+            />
+          </Col>
+          <Col md={2} sm={4} xs={6} className="mb-2">
+            <Form.Check
+              type="checkbox"
+              id="barChart"
+              label="Revenue by Product"
+              checked={selectedCharts.barChart}
+              onChange={() => handleChartSelection('barChart')}
+            />
+          </Col>
+          <Col md={2} sm={4} xs={6} className="mb-2">
+            <Form.Check
+              type="checkbox"
+              id="pieChart"
+              label="Revenue by Store"
+              checked={selectedCharts.pieChart}
+              onChange={() => handleChartSelection('pieChart')}
+            />
+          </Col>
+          <Col md={2} sm={4} xs={6} className="mb-2">
+            <Form.Check
+              type="checkbox"
+              id="doughnutChart"
+              label="Units by Category"
+              checked={selectedCharts.doughnutChart}
+              onChange={() => handleChartSelection('doughnutChart')}
+            />
+          </Col>
+          <Col md={2} sm={4} xs={6} className="mb-2">
+            <Form.Check
+              type="checkbox"
+              id="treemapChart"
+              label="Revenue Treemap"
+              checked={selectedCharts.treemapChart}
+              onChange={() => handleChartSelection('treemapChart')}
+            />
+          </Col>
+          <Col md={2} sm={4} xs={6} className="mb-2">
+            <Form.Check
+              type="checkbox"
+              id="dataTable"
+              label="Data Table"
+              checked={selectedCharts.dataTable}
+              onChange={() => handleChartSelection('dataTable')}
+            />
+          </Col>
+        </Row>
+      </Card.Body>
+    </Card>
+  </Col>
+</Row>
 
 {/* All graphs in responsive grid */}
 <Row>
-    <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
-      <Card>
-        <Card.Body className="chart-container p-0">
-          <div ref={lineRef} style={{ width: "99%", height: "99%" }}></div>
-        </Card.Body>
-        <Card.Footer className="text-center small">Total Revenue Over Time</Card.Footer>
-      </Card>
-    </Col>
-    <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
-      <Card>
-        <Card.Body className="chart-container p-0">
-          <div ref={barRef} style={{ width: "99%", height: "99%" }}></div>
-        </Card.Body>
-        <Card.Footer className="text-center small">Revenue by Product</Card.Footer>
-      </Card>
-    </Col>
-    <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
-      <Card>
-        <Card.Body className="chart-container p-0">
-          <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
-        </Card.Body>
-        <Card.Footer className="text-center small">Revenue by Store</Card.Footer>
-      </Card>
-    </Col>
-    <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
-      <Card>
-        <Card.Body className="chart-container p-0">
-          <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
-        </Card.Body>
-        <Card.Footer className="text-center small">Units Sold by Category</Card.Footer>
-      </Card>
-    </Col>
+    {selectedCharts.lineChart && (
+      <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
+        <Card>
+          <Card.Body className="chart-container p-0">
+            <div ref={lineRef} style={{ width: "99%", height: "99%" }}></div>
+          </Card.Body>
+          <Card.Footer className="text-center small">Total Revenue Over Time</Card.Footer>
+        </Card>
+      </Col>
+    )}
+    {selectedCharts.barChart && (
+      <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
+        <Card>
+          <Card.Body className="chart-container p-0">
+            <div ref={barRef} style={{ width: "99%", height: "99%" }}></div>
+          </Card.Body>
+          <Card.Footer className="text-center small">Revenue by Product</Card.Footer>
+        </Card>
+      </Col>
+    )}
+    {selectedCharts.pieChart && (
+      <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
+        <Card>
+          <Card.Body className="chart-container p-0">
+            <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
+          </Card.Body>
+          <Card.Footer className="text-center small">Revenue by Store</Card.Footer>
+        </Card>
+      </Col>
+    )}
+    {selectedCharts.doughnutChart && (
+      <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
+        <Card>
+          <Card.Body className="chart-container p-0">
+            <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
+          </Card.Body>
+          <Card.Footer className="text-center small">Units Sold by Category</Card.Footer>
+        </Card>
+      </Col>
+    )}
   </Row>
 
-<Row>
-    <Col lg={6} md={12} className="mb-4">
-      <Card>
-        <Card.Body className="chart-container p-0">
-          <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
-        </Card.Body>
-        <Card.Footer className="text-center small">Revenue Treemap</Card.Footer>
-      </Card>
-    </Col>
-  </Row>
+{selectedCharts.treemapChart && (
+  <Row>
+      <Col lg={6} md={12} className="mb-4">
+        <Card>
+          <Card.Body className="chart-container p-0">
+            <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
+          </Card.Body>
+          <Card.Footer className="text-center small">Revenue Treemap</Card.Footer>
+        </Card>
+      </Col>
+    </Row>
+)}
 
-<div ref={tableRef} className="mt-4">
-  <div className="table-responsive">
-    <Table striped bordered hover size="sm">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Product</th>
-                <th>Category</th>
-                <th>Store</th>
-                <th>Customer</th>
-                <th>Units Sold</th>
-                <th>Revenue</th>
-                <th>Profit</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredData.map((row, idx) => (
-                <tr key={idx}>
-                  <td>{row.date}</td>
-                  <td>{row.product_name}</td>
-                  <td>{row.category}</td>
-                  <td>{row.store_name}</td>
-                  <td>{row.customer_name}</td>
-                  <td>{row.units_sold}</td>
-                  <td>{row.revenue}</td>
-                  <td>{row.profit}</td>
+{selectedCharts.dataTable && (
+  <div ref={tableRef} className="mt-4">
+    <div className="table-responsive">
+      <Table striped bordered hover size="sm">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th>Store</th>
+                  <th>Customer</th>
+                  <th>Units Sold</th>
+                  <th>Revenue</th>
+                  <th>Profit</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {filteredData.map((row, idx) => (
+                  <tr key={idx}>
+                    <td>{row.date}</td>
+                    <td>{row.product_name}</td>
+                    <td>{row.category}</td>
+                    <td>{row.store_name}</td>
+                    <td>{row.customer_name}</td>
+                    <td>{row.units_sold}</td>
+                    <td>{row.revenue}</td>
+                    <td>{row.profit}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
         </div>
-      </div>
+)}
     </Container>
   );
 }
 
-function PPDashboard({ token, onLogout, persona, loginName }) {
+function PPDashboard({ token, persona, loginName }) {
   const [data, setData] = useState([]);
   const [products, setProducts] = useState([]);
   const [stores, setStores] = useState([]);
@@ -963,6 +1144,150 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
   const [showEmailForm, setShowEmailForm] = useState(false);
+
+  // Bookmark states for PPDashboard
+  const [bookmarkName, setBookmarkName] = useState("");
+  const [selectedBookmark, setSelectedBookmark] = useState("");
+  // Load bookmarks from localStorage or use empty object
+  const [bookmarks, setBookmarks] = useState(() => {
+    try {
+      const savedBookmarks = localStorage.getItem('pp-dashboard-bookmarks');
+      return savedBookmarks ? JSON.parse(savedBookmarks) : {};
+    } catch (error) {
+      console.error('Error loading PP bookmarks:', error);
+      return {};
+    }
+  });
+  const [editBookmark, setEditBookmark] = useState("");
+  const [renameBookmark, setRenameBookmark] = useState("");
+
+  // Chart selection state for PPDashboard
+  const [selectedCharts, setSelectedCharts] = useState({
+    lineChart: true,
+    barChart: true,
+    pieChart: true,
+    doughnutChart: true,
+    treemapChart: true,
+    dataTable: true
+  });
+
+  // Handle chart selection toggle
+  const handleChartSelection = (chartName) => {
+    setSelectedCharts(prev => ({
+      ...prev,
+      [chartName]: !prev[chartName]
+    }));
+  };
+
+  // Function to select/deselect all charts
+  const handleSelectAllCharts = (selectAll) => {
+    setSelectedCharts({
+      lineChart: selectAll,
+      barChart: selectAll,
+      pieChart: selectAll,
+      doughnutChart: selectAll,
+      treemapChart: selectAll,
+      dataTable: selectAll
+    });
+  };
+
+  // Bookmark handler functions for PPDashboard
+  const handleSaveBookmark = () => {
+    if (!bookmarkName) {
+      alert("Please enter a bookmark name.");
+      return;
+    }
+    const newBookmarks = { ...bookmarks };
+    newBookmarks[bookmarkName] = {
+      product: selectedProduct,
+      store: selectedStore,
+      charts: selectedCharts
+    };
+    setBookmarks(newBookmarks);
+    // Persist to localStorage
+    localStorage.setItem('pp-dashboard-bookmarks', JSON.stringify(newBookmarks));
+    setBookmarkName(""); // Clear the input
+    alert(`Bookmark '${bookmarkName}' saved with selected charts!`);
+  };
+
+  const handleApplyBookmark = (name) => {
+    if (!name || !bookmarks[name]) return;
+    const bookmark = bookmarks[name];
+    setSelectedProduct(bookmark.product || "");
+    setSelectedStore(bookmark.store || "");
+    setSelectedBookmark(name);
+    
+    // Apply chart selections if available, otherwise show all charts
+    if (bookmark.charts) {
+      setSelectedCharts(bookmark.charts);
+    } else {
+      // For backward compatibility with old bookmarks
+      setSelectedCharts({
+        lineChart: true,
+        barChart: true,
+        pieChart: true,
+        doughnutChart: true,
+        treemapChart: true,
+        dataTable: true
+      });
+    }
+    // Re-rendering is handled by useEffect when selectedCharts changes
+  };
+
+  const handleRenameBookmark = () => {
+    if (!editBookmark || !renameBookmark) {
+      alert("Please select a bookmark and enter a new name.");
+      return;
+    }
+    if (bookmarks[renameBookmark]) {
+      alert("A bookmark with the new name already exists.");
+      return;
+    }
+    const newBookmarks = { ...bookmarks };
+    newBookmarks[renameBookmark] = newBookmarks[editBookmark];
+    delete newBookmarks[editBookmark];
+    setBookmarks(newBookmarks);
+    // Persist to localStorage
+    localStorage.setItem('pp-dashboard-bookmarks', JSON.stringify(newBookmarks));
+    setEditBookmark("");
+    setRenameBookmark("");
+    alert(`Bookmark renamed to '${renameBookmark}'`);
+  };
+
+  const handleDeleteBookmark = () => {
+    if (!editBookmark) {
+      alert("Please select a bookmark to delete.");
+      return;
+    }
+    const newBookmarks = { ...bookmarks };
+    delete newBookmarks[editBookmark];
+    setBookmarks(newBookmarks);
+    // Persist to localStorage
+    localStorage.setItem('pp-dashboard-bookmarks', JSON.stringify(newBookmarks));
+    setEditBookmark("");
+    setRenameBookmark("");
+    alert("Bookmark deleted.");
+  };
+
+  // Force chart re-render when charts are toggled
+  const [chartRenderKey, setChartRenderKey] = useState(0);
+
+  // Force chart re-render when selectedCharts changes
+  useEffect(() => {
+    // Small delay to ensure DOM updates before re-rendering charts
+    const timer = setTimeout(() => {
+      // Clear all chart containers and trigger re-render
+      const chartContainers = document.querySelectorAll('.chart-container > div');
+      chartContainers.forEach(container => {
+        if (container) {
+          container.innerHTML = '';
+        }
+      });
+      // Force a state update to trigger re-rendering
+      setChartRenderKey(prev => prev + 1);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [selectedCharts]);
 
   const barRef = useD3Chart(
     drawBarChart,
@@ -1026,7 +1351,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
         ).reduce((a, b) => a + Number(b.revenue), 0)
       )
     },
-    [data, selectedProduct, selectedStore]
+    [data, selectedProduct, selectedStore, chartRenderKey]
   );
 
   const doughnutColors = ["#ff6384", "#ffce56", "#36a2eb", "#4bc0c0"];
@@ -1049,7 +1374,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
       ),
       colors: doughnutColors
     },
-    [data, selectedProduct, selectedStore]
+    [data, selectedProduct, selectedStore, chartRenderKey]
   );
 
   const treemapRef = useD3Chart(
@@ -1084,7 +1409,7 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
       }))
     }))
   },
-  [data, selectedProduct, selectedStore]
+  [data, selectedProduct, selectedStore, chartRenderKey]
 );
   const tableRef = useRef();
 
@@ -1353,88 +1678,276 @@ function PPDashboard({ token, onLogout, persona, loginName }) {
             <Button onClick={exportExcel} size="sm" variant="success" className="flex-fill">Export Excel</Button>
             <Button onClick={exportPDF} size="sm" variant="primary" className="flex-fill">Export PDF</Button>
           </div>
-          <Button variant="outline-secondary" onClick={onLogout} size="sm" className="w-100">Logout</Button>
+        </Col>
+      </Row>
+
+      {/* Bookmark Controls */}
+      <Row className="my-3">
+        <Col lg={6} md={12} className="mb-3">
+          <Card>
+            <Card.Header><h6 className="mb-0">Save/Apply Bookmarks</h6></Card.Header>
+            <Card.Body>
+              <Row>
+                <Col md={6} className="mb-2">
+                  <Form.Group>
+                    <Form.Label><small>Save New Bookmark:</small></Form.Label>
+                    <div className="d-flex gap-1">
+                      <Form.Control
+                        size="sm"
+                        placeholder="Bookmark name"
+                        value={bookmarkName}
+                        onChange={e => setBookmarkName(e.target.value)}
+                      />
+                      <Button onClick={handleSaveBookmark} size="sm" variant="primary">Save</Button>
+                    </div>
+                  </Form.Group>
+                </Col>
+                <Col md={6} className="mb-2">
+                  <Form.Group>
+                    <Form.Label><small>Apply Bookmark:</small></Form.Label>
+                    <div className="d-flex gap-1">
+                      <Form.Select
+                        size="sm"
+                        value={selectedBookmark}
+                        onChange={e => {
+                          setSelectedBookmark(e.target.value);
+                          handleApplyBookmark(e.target.value);
+                        }}
+                      >
+                        <option value="">Select bookmark...</option>
+                        {Object.keys(bookmarks).map(name => (
+                          <option key={name} value={name}>{name}</option>
+                        ))}
+                      </Form.Select>
+                    </div>
+                  </Form.Group>
+                </Col>
+              </Row>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col lg={6} md={12} className="mb-3">
+          <Card>
+            <Card.Header><h6 className="mb-0">Manage Bookmarks</h6></Card.Header>
+            <Card.Body>
+              <Row>
+                <Col md={4} className="mb-2">
+                  <Form.Group>
+                    <Form.Label><small>Select:</small></Form.Label>
+                    <Form.Select
+                      size="sm"
+                      value={editBookmark}
+                      onChange={e => setEditBookmark(e.target.value)}
+                    >
+                      <option value="">Choose...</option>
+                      {Object.keys(bookmarks).map(name => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+                <Col md={4} className="mb-2">
+                  <Form.Group>
+                    <Form.Label><small>Rename to:</small></Form.Label>
+                    <Form.Control
+                      size="sm"
+                      placeholder="New name"
+                      value={renameBookmark}
+                      onChange={e => setRenameBookmark(e.target.value)}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4} className="mb-2">
+                  <Form.Group>
+                    <Form.Label><small>Actions:</small></Form.Label>
+                    <div className="d-flex gap-1">
+                      <Button onClick={handleRenameBookmark} size="sm" variant="warning" className="flex-fill">Rename</Button>
+                      <Button onClick={handleDeleteBookmark} size="sm" variant="danger" className="flex-fill">Delete</Button>
+                    </div>
+                  </Form.Group>
+                </Col>
+              </Row>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Chart Selection Interface */}
+      <Row className="mb-3">
+        <Col>
+          <Card className="mb-3">
+            <Card.Header className="d-flex justify-content-between align-items-center">
+              <h6 className="mb-0">Select Charts for Bookmark</h6>
+              <div>
+                <Button 
+                  size="sm" 
+                  variant="outline-primary" 
+                  className="me-2"
+                  onClick={() => handleSelectAllCharts(true)}
+                >
+                  Select All
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline-secondary"
+                  onClick={() => handleSelectAllCharts(false)}
+                >
+                  Deselect All
+                </Button>
+              </div>
+            </Card.Header>
+            <Card.Body className="py-2">
+              <Row>
+                <Col md={2} sm={4} xs={6} className="mb-2">
+                  <Form.Check
+                    type="checkbox"
+                    id="lineChart-pp"
+                    label="Revenue Over Time"
+                    checked={selectedCharts.lineChart}
+                    onChange={() => handleChartSelection('lineChart')}
+                  />
+                </Col>
+                <Col md={2} sm={4} xs={6} className="mb-2">
+                  <Form.Check
+                    type="checkbox"
+                    id="barChart-pp"
+                    label="Revenue by Product"
+                    checked={selectedCharts.barChart}
+                    onChange={() => handleChartSelection('barChart')}
+                  />
+                </Col>
+                <Col md={2} sm={4} xs={6} className="mb-2">
+                  <Form.Check
+                    type="checkbox"
+                    id="pieChart-pp"
+                    label="Revenue by Store"
+                    checked={selectedCharts.pieChart}
+                    onChange={() => handleChartSelection('pieChart')}
+                  />
+                </Col>
+                <Col md={2} sm={4} xs={6} className="mb-2">
+                  <Form.Check
+                    type="checkbox"
+                    id="doughnutChart-pp"
+                    label="Units by Category"
+                    checked={selectedCharts.doughnutChart}
+                    onChange={() => handleChartSelection('doughnutChart')}
+                  />
+                </Col>
+                <Col md={2} sm={4} xs={6} className="mb-2">
+                  <Form.Check
+                    type="checkbox"
+                    id="treemapChart-pp"
+                    label="Revenue Treemap"
+                    checked={selectedCharts.treemapChart}
+                    onChange={() => handleChartSelection('treemapChart')}
+                  />
+                </Col>
+                <Col md={2} sm={4} xs={6} className="mb-2">
+                  <Form.Check
+                    type="checkbox"
+                    id="dataTable-pp"
+                    label="Data Table"
+                    checked={selectedCharts.dataTable}
+                    onChange={() => handleChartSelection('dataTable')}
+                  />
+                </Col>
+              </Row>
+            </Card.Body>
+          </Card>
         </Col>
       </Row>
 
       {/* All graphs in responsive grid */}
       <Row>
-        <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
-          <Card>
-            <Card.Body className="chart-container p-0">
-              <div ref={lineRef} style={{ width: "99%", height: "99%" }}></div>
-            </Card.Body>
-            <Card.Footer className="text-center small">Total Revenue Over Time</Card.Footer>
-          </Card>
-        </Col>
-        <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
-          <Card>
-            <Card.Body className="chart-container p-0">
-              <div ref={barRef} style={{ width: "99%", height: "99%" }}></div>
-            </Card.Body>
-            <Card.Footer className="text-center small">Revenue by Product</Card.Footer>
-          </Card>
-        </Col>
-        <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
-          <Card>
-            <Card.Body className="chart-container p-0">
-              <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
-            </Card.Body>
-            <Card.Footer className="text-center small">Revenue by Store</Card.Footer>
-          </Card>
-        </Col>
-        <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
-          <Card>
-            <Card.Body className="chart-container p-0">
-              <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
-            </Card.Body>
-            <Card.Footer className="text-center small">Units Sold by Category</Card.Footer>
-          </Card>
-        </Col>
+        {selectedCharts.lineChart && (
+          <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
+            <Card>
+              <Card.Body className="chart-container p-0">
+                <div ref={lineRef} style={{ width: "99%", height: "99%" }}></div>
+              </Card.Body>
+              <Card.Footer className="text-center small">Total Revenue Over Time</Card.Footer>
+            </Card>
+          </Col>
+        )}
+        {selectedCharts.barChart && (
+          <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
+            <Card>
+              <Card.Body className="chart-container p-0">
+                <div ref={barRef} style={{ width: "99%", height: "99%" }}></div>
+              </Card.Body>
+              <Card.Footer className="text-center small">Revenue by Product</Card.Footer>
+            </Card>
+          </Col>
+        )}
+        {selectedCharts.pieChart && (
+          <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
+            <Card>
+              <Card.Body className="chart-container p-0">
+                <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
+              </Card.Body>
+              <Card.Footer className="text-center small">Revenue by Store</Card.Footer>
+            </Card>
+          </Col>
+        )}
+        {selectedCharts.doughnutChart && (
+          <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
+            <Card>
+              <Card.Body className="chart-container p-0">
+                <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
+              </Card.Body>
+              <Card.Footer className="text-center small">Units Sold by Category</Card.Footer>
+            </Card>
+          </Col>
+        )}
       </Row>
 
       <Row>
-       <Col lg={6} md={12} className="mb-4">
-          <Card>
-            <Card.Body className="chart-container p-0">
-              <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
-            </Card.Body>
-            <Card.Footer className="text-center small">Revenue Treemap</Card.Footer>
-          </Card>
-        </Col>
+        {selectedCharts.treemapChart && (
+          <Col lg={6} md={12} className="mb-4">
+            <Card>
+              <Card.Body className="chart-container p-0">
+                <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
+              </Card.Body>
+              <Card.Footer className="text-center small">Revenue Treemap</Card.Footer>
+            </Card>
+          </Col>
+        )}
       </Row>
-      <div ref={tableRef} className="mt-4">
-        <div className="table-responsive">
-          <Table striped bordered hover size="sm">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Product</th>
-                <th>Category</th>
-                <th>Store</th>
-                <th>Customer</th>
-                <th>Units Sold</th>
-                <th>Revenue</th>
-                <th>Profit</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredData.map((row, idx) => (
-                <tr key={idx}>
-                  <td>{row.date}</td>
-                  <td>{row.product_name}</td>
-                  <td>{row.category}</td>
-                  <td>{row.store_name}</td>
-                  <td>{row.customer_name}</td>
-                  <td>{row.units_sold}</td>
-                  <td>{row.revenue}</td>
-                  <td>{row.profit}</td>
+      {selectedCharts.dataTable && (
+        <div ref={tableRef} className="mt-4">
+          <div className="table-responsive">
+            <Table striped bordered hover size="sm">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th>Store</th>
+                  <th>Customer</th>
+                  <th>Units Sold</th>
+                  <th>Revenue</th>
+                  <th>Profit</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {filteredData.map((row, idx) => (
+                  <tr key={idx}>
+                    <td>{row.date}</td>
+                    <td>{row.product_name}</td>
+                    <td>{row.category}</td>
+                    <td>{row.store_name}</td>
+                    <td>{row.customer_name}</td>
+                    <td>{row.units_sold}</td>
+                    <td>{row.revenue}</td>
+                    <td>{row.profit}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
         </div>
-      </div>
+      )}
     </Container>
   );
 }
@@ -1547,11 +2060,25 @@ export default function App() {
       <Navbar bg="dark" variant="dark" expand="lg">
         <Container fluid>
           <Navbar.Brand>BI Dashboard</Navbar.Brand>
-          {persona && (
-            <Navbar.Text style={{ color: "#FFD700" }} className="d-none d-md-block">
-              &nbsp;Persona: <b>{persona}</b>
-            </Navbar.Text>
-          )}
+          <Navbar.Toggle aria-controls="basic-navbar-nav" />
+          <Navbar.Collapse id="basic-navbar-nav">
+            {persona && (
+              <Navbar.Text style={{ color: "#FFD700" }} className="me-auto">
+                &nbsp;Persona: <b>{persona}</b>
+              </Navbar.Text>
+            )}
+            <Button 
+              variant="outline-light" 
+              size="sm" 
+              onClick={() => {
+                localStorage.removeItem('token');
+                setToken('');
+              }}
+              className="ms-auto"
+            >
+              Logout
+            </Button>
+          </Navbar.Collapse>
         </Container>
       </Navbar>
       {token ? (
@@ -1583,7 +2110,6 @@ export default function App() {
           <div style={{ flex: 1, minWidth: 0 }} className="overflow-auto">
             <DashboardComponent
               token={token}
-              onLogout={() => setToken('')}
               persona={persona}
               loginName={loginName}
             />
