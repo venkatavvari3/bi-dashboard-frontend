@@ -450,12 +450,40 @@ function drawDoughnutChart(container, { labels, values, colors }) {
 }
 
 
-function drawBubbleChart(container, { data, xKey, yKey, sizeKey, xLabel = "X Axis", yLabel = "Y Axis", colors = ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0", "#9966ff"] }) {
+function drawBubbleChart(container, { data, labelKey = "product_name", colors = ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0", "#9966ff", "#ff9f40", "#c9cbcf", "#8e44ad", "#e74c3c", "#f39c12"] }) {
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
-  const margin = { top: 24, right: 16, bottom: 44, left: 60 };
+  const margin = { top: 20, right: 20, bottom: 100, left: 20 }; // Optimized margins for maximum bubble space
   
   d3.select(container).selectAll("*").remove();
+  
+  // Aggregate data by product to get cumulative profit
+  const productData = {};
+  data.forEach(row => {
+    const productName = row[labelKey];
+    const profit = Number(row.profit) || 0;
+    const revenue = Number(row.revenue) || 0;
+    const unitsSold = Number(row.units_sold) || 0;
+    
+    if (!productData[productName]) {
+      productData[productName] = {
+        name: productName,
+        totalProfit: 0,
+        totalRevenue: 0,
+        totalUnitsSold: 0,
+        category: row.category || 'Unknown'
+      };
+    }
+    
+    productData[productName].totalProfit += profit;
+    productData[productName].totalRevenue += revenue;
+    productData[productName].totalUnitsSold += unitsSold;
+  });
+  
+  // Convert to array and sort by profit
+  const aggregatedData = Object.values(productData).sort((a, b) => b.totalProfit - a.totalProfit);
+  
+  console.log('Aggregated product data:', aggregatedData); // Debug log
   
   const svg = d3.select(container)
     .append("svg")
@@ -468,90 +496,194 @@ function drawBubbleChart(container, { data, xKey, yKey, sizeKey, xLabel = "X Axi
 
   const g = svg.append("g");
 
-  // Extract values and create scales
-  const xValues = data.map(d => Number(d[xKey]));
-  const yValues = data.map(d => Number(d[yKey]));
-  const sizeValues = data.map(d => Number(d[sizeKey]));
+  // Calculate chart area dimensions
+  const chartWidth = width - margin.left - margin.right;
+  const chartHeight = height - margin.top - margin.bottom;
 
-  const xScale = d3.scaleLinear()
-    .domain(d3.extent(xValues))
-    .nice()
-    .range([margin.left, width - margin.right]);
-
-  const yScale = d3.scaleLinear()
-    .domain(d3.extent(yValues))
-    .nice()
-    .range([height - margin.bottom, margin.top]);
-
+  // Create scales
+  const maxProfit = d3.max(aggregatedData, d => d.totalProfit) || 1;
+  const minProfit = d3.min(aggregatedData, d => d.totalProfit) || 0;
+  
+  // Scale for bubble size based on profit - maximized for available space
   const sizeScale = d3.scaleLinear()
-    .domain(d3.extent(sizeValues))
-    .range([3, 20]); // Bubble radius range
-
-  // Add axes
-  g.append("g")
-    .attr("transform", `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(xScale).tickFormat(d3.format(".0f")))
-    .selectAll("text").style("font-size", "11px");
-
-  g.append("g")
-    .attr("transform", `translate(${margin.left},0)`)
-    .call(d3.axisLeft(yScale).tickFormat(d3.format(".0f")))
-    .selectAll("text").style("font-size", "11px");
-
-  // Add axis labels
-  g.append("text")
-    .attr("transform", `translate(${width / 2}, ${height - 5})`)
-    .style("text-anchor", "middle")
-    .style("font-size", "12px")
-    .text(xLabel);
-
-  g.append("text")
-    .attr("transform", "rotate(-90)")
-    .attr("y", 15)
-    .attr("x", 0 - (height / 2))
-    .style("text-anchor", "middle")
-    .style("font-size", "12px")
-    .text(yLabel);
+    .domain([minProfit, maxProfit])
+    .range([25, Math.min(chartWidth, chartHeight) * 0.35]); // Increased further to 0.35 for even larger bubbles
+  
+  // Position bubbles in a packed circle layout within chart boundaries
+  const simulation = d3.forceSimulation(aggregatedData)
+    .force("charge", d3.forceManyBody().strength(-150)) // Increased repulsion for larger bubbles
+    .force("center", d3.forceCenter(width / 2, margin.top + chartHeight / 2))
+    .force("collision", d3.forceCollide().radius(d => sizeScale(d.totalProfit) + 5)) // Increased padding
+    .force("x", d3.forceX(width / 2).strength(0.2))
+    .force("y", d3.forceY(margin.top + chartHeight / 2).strength(0.2))
+    .stop();
+  
+  // Run simulation
+  for (let i = 0; i < 300; ++i) simulation.tick();
 
   // Create tooltip
   const tooltip = d3.select(container)
     .append("div")
     .style("position", "absolute")
-    .style("background", "rgba(0, 0, 0, 0.8)")
+    .style("background", "rgba(0, 0, 0, 0.9)")
     .style("color", "white")
-    .style("padding", "8px")
-    .style("border-radius", "4px")
+    .style("padding", "10px")
+    .style("border-radius", "6px")
     .style("font-size", "12px")
     .style("pointer-events", "none")
-    .style("opacity", 0);
+    .style("opacity", 0)
+    .style("box-shadow", "0 4px 8px rgba(0,0,0,0.3)");
+
+  // Create color mapping for products
+  const colorMap = {};
+  aggregatedData.forEach((product, i) => {
+    colorMap[product.name] = colors[i % colors.length];
+  });
 
   // Add bubbles
-  g.selectAll(".bubble")
-    .data(data)
+  const bubbles = g.selectAll(".bubble")
+    .data(aggregatedData)
     .enter()
     .append("circle")
     .attr("class", "bubble")
-    .attr("cx", d => xScale(Number(d[xKey])))
-    .attr("cy", d => yScale(Number(d[yKey])))
-    .attr("r", d => sizeScale(Number(d[sizeKey])))
-    .attr("fill", (d, i) => colors[i % colors.length])
-    .attr("opacity", 0.7)
+    .attr("cx", d => d.x)
+    .attr("cy", d => d.y)
+    .attr("r", d => sizeScale(d.totalProfit))
+    .attr("fill", d => colorMap[d.name])
+    .attr("opacity", 0.8)
     .attr("stroke", "#fff")
-    .attr("stroke-width", 1)
+    .attr("stroke-width", 2)
+    .style("cursor", "pointer")
     .on("mouseover", function(event, d) {
-      d3.select(this).attr("opacity", 1);
+      d3.select(this).attr("opacity", 1).attr("stroke-width", 3);
       tooltip.transition().duration(200).style("opacity", 1);
-      tooltip.html(`
-        ${xLabel}: ${Number(d[xKey]).toLocaleString()}<br/>
-        ${yLabel}: ${Number(d[yKey]).toLocaleString()}<br/>
-        Size: ${Number(d[sizeKey]).toLocaleString()}
-      `)
-      .style("left", (event.offsetX + 10) + "px")
-      .style("top", (event.offsetY - 10) + "px");
+      
+      const tooltipContent = `
+        <strong>${d.name}</strong><br/>
+        <span style="color: #4CAF50;">Cumulative Profit: $${d.totalProfit.toLocaleString()}</span><br/>
+        Total Revenue: $${d.totalRevenue.toLocaleString()}<br/>
+        Units Sold: ${d.totalUnitsSold.toLocaleString()}<br/>
+        Category: ${d.category}
+      `;
+      
+      tooltip.html(tooltipContent)
+        .style("left", (event.offsetX + 10) + "px")
+        .style("top", (event.offsetY - 10) + "px");
     })
     .on("mouseout", function(d) {
-      d3.select(this).attr("opacity", 0.7);
+      d3.select(this).attr("opacity", 0.8).attr("stroke-width", 2);
       tooltip.transition().duration(500).style("opacity", 0);
+    });
+
+  // Add product name labels on bubbles
+  g.selectAll(".bubble-label")
+    .data(aggregatedData)
+    .enter()
+    .append("text")
+    .attr("class", "bubble-label")
+    .attr("x", d => d.x)
+    .attr("y", d => d.y - 3)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .style("font-size", d => {
+      const radius = sizeScale(d.totalProfit);
+      return `${Math.max(12, Math.min(22, radius / 3))}px`; // Even larger font sizes for bigger bubbles
+    })
+    .style("font-weight", "bold")
+    .style("fill", "#fff")
+    .style("text-shadow", "1px 1px 3px rgba(0,0,0,0.8)")
+    .style("pointer-events", "none")
+    .text(d => {
+      // Truncate long product names based on bubble size - more generous with larger bubbles
+      const radius = sizeScale(d.totalProfit);
+      const maxLength = Math.max(6, Math.floor(radius / 3)); // More characters allowed for larger bubbles
+      return d.name.length > maxLength ? d.name.substring(0, maxLength - 2) + "..." : d.name;
+    });
+
+  // Add profit values on bubbles (second line)
+  g.selectAll(".profit-label")
+    .data(aggregatedData)
+    .enter()
+    .append("text")
+    .attr("class", "profit-label")
+    .attr("x", d => d.x)
+    .attr("y", d => d.y + 12)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .style("font-size", d => {
+      const radius = sizeScale(d.totalProfit);
+      return `${Math.max(10, Math.min(16, radius / 4))}px`; // Larger font sizes for profit labels in bigger bubbles
+    })
+    .style("font-weight", "normal")
+    .style("fill", "#fff")
+    .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
+    .style("pointer-events", "none")
+    .text(d => {
+      const profit = d.totalProfit;
+      if (profit >= 1000000) {
+        return `$${(profit / 1000000).toFixed(1)}M`;
+      } else if (profit >= 1000) {
+        return `$${(profit / 1000).toFixed(0)}k`;
+      } else {
+        return `$${profit.toLocaleString()}`;
+      }
+    });
+
+  // Title and subtitle removed to maximize chart space for bubbles
+
+  // Add legend showing top products - positioned at the bottom to avoid overlap
+  const numLegendItems = Math.min(6, aggregatedData.length); // Limit to 6 items
+  const topProducts = aggregatedData.slice(0, numLegendItems);
+  const legendHeight = Math.ceil(numLegendItems / 3) * 18 + 10; // Calculate legend height
+  const legendY = height - legendHeight - 10; // Position above bottom margin
+  
+  const legend = svg.append("g")
+    .attr("class", "product-legend")
+    .attr("transform", `translate(10, ${legendY})`);
+
+  // Add legend background for better visibility
+  legend.append("rect")
+    .attr("x", -5)
+    .attr("y", -5)
+    .attr("width", width - 10)
+    .attr("height", legendHeight)
+    .attr("fill", "rgba(255, 255, 255, 0.9)")
+    .attr("stroke", "#ddd")
+    .attr("stroke-width", 1)
+    .attr("rx", 4);
+
+  const legendItems = legend.selectAll(".legend-item")
+    .data(topProducts)
+    .enter()
+    .append("g")
+    .attr("class", "legend-item")
+    .attr("transform", (d, i) => {
+      const itemsPerRow = 3;
+      const col = i % itemsPerRow;
+      const row = Math.floor(i / itemsPerRow);
+      const colWidth = (width - 30) / itemsPerRow;
+      return `translate(${col * colWidth}, ${row * 16 + 5})`;
+    });
+
+  legendItems.append("circle")
+    .attr("cx", 6)
+    .attr("cy", 6)
+    .attr("r", 4)
+    .attr("fill", d => colorMap[d.name]);
+
+  legendItems.append("text")
+    .attr("x", 15)
+    .attr("y", 6)
+    .attr("dy", "0.35em")
+    .style("font-size", "8px")
+    .style("fill", "#333")
+    .style("font-weight", "500")
+    .text(d => {
+      const maxLength = Math.floor((width - 30) / 3 / 6); // Adjust based on available space
+      const name = d.name.length > maxLength ? d.name.substring(0, maxLength - 2) + "..." : d.name;
+      const profit = d.totalProfit >= 1000000 ? `$${(d.totalProfit / 1000000).toFixed(1)}M` : 
+                    d.totalProfit >= 1000 ? `$${(d.totalProfit / 1000).toFixed(0)}k` : `$${d.totalProfit}`;
+      return `${name} (${profit})`;
     });
 }
 
@@ -873,11 +1005,7 @@ const bubbleRef = useD3Chart(
         (selectedProduct ? row.product_name === selectedProduct : true) &&
         (selectedStore ? row.store_name === selectedStore : true)
       ),
-    xKey: "revenue",
-    yKey: "profit", 
-    sizeKey: "units_sold",
-    xLabel: "Revenue",
-    yLabel: "Profit"
+    labelKey: "product_name"
   },
   [data, selectedProduct, selectedStore, chartRenderKey]
 );
@@ -1453,12 +1581,12 @@ if (loading) return <Spinner animation="border" />;
 
 {selectedCharts.bubbleChart && (
   <Row>
-    <Col lg={8} md={10} sm={12} className="mb-4">
+    <Col lg={10} md={12} sm={12} className="mb-4"> {/* Increased from lg={8} to lg={10} for more width */}
       <Card>
-        <Card.Body className="chart-container p-0" style={{ height: "400px" }}>
+        <Card.Body className="chart-container p-0" style={{ height: "500px" }}> {/* Increased from 400px to 500px */}
           <div ref={bubbleRef} style={{ width: "99%", height: "99%" }}></div>
         </Card.Body>
-        <Card.Footer className="text-center small">Revenue vs Profit vs Units Sold</Card.Footer>
+        <Card.Footer className="text-center small">Cumulative Profit by Product</Card.Footer>
       </Card>
     </Col>
   </Row>
@@ -1807,12 +1935,7 @@ function PPDashboard({ token, persona, loginName }) {
     drawBubbleChart,
     {
       data: chartData.bubble,
-      xKey: "revenue",
-      yKey: "profit", 
-      sizeKey: "units_sold",
-      xLabel: "Revenue",
-      yLabel: "Profit",
-      colors: ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0", "#9966ff"]
+      labelKey: "product_name"
     },
     [chartData.bubble, chartRenderKey]
   );
@@ -2355,12 +2478,12 @@ function PPDashboard({ token, persona, loginName }) {
 
       {selectedCharts.bubbleChart && (
         <Row>
-          <Col lg={8} md={10} sm={12} className="mb-4">
+          <Col lg={10} md={12} sm={12} className="mb-4"> {/* Increased from lg={8} to lg={10} for more width */}
             <Card>
-              <Card.Body className="chart-container p-0" style={{ height: "400px" }}>
+              <Card.Body className="chart-container p-0" style={{ height: "500px" }}> {/* Increased from 400px to 500px */}
                 <div ref={bubbleRef} style={{ width: "99%", height: "99%" }}></div>
               </Card.Body>
-              <Card.Footer className="text-center small">Revenue vs Profit vs Units Sold</Card.Footer>
+              <Card.Footer className="text-center small">Cumulative Profit by Product</Card.Footer>
             </Card>
           </Col>
         </Row>
