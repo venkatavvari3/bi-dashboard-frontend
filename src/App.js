@@ -459,156 +459,110 @@ function drawDoughnutChart(container, { labels, values, colors }) {
 }
 
 
-function drawTreemap(container, data) {
+function drawBubbleChart(container, { data, xKey, yKey, sizeKey, xLabel = "X Axis", yLabel = "Y Axis", colors = ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0", "#9966ff"] }) {
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
-
+  const margin = { top: 24, right: 16, bottom: 44, left: 60 };
+  
   d3.select(container).selectAll("*").remove();
-
+  
   const svg = d3.select(container)
     .append("svg")
     .attr("width", "99%")
     .attr("height", "99%")
-    .attr("viewBox", [0, 0, width, height])
+    .attr("viewBox", `0 0 ${width} ${height}`)
     .attr("preserveAspectRatio", "xMinYMin meet")
-    .style("display", "block");
+    .style("display", "block")
+    .style("margin", "0 auto");
 
-  const format = d3.format(",d");
-  const color = d3.scaleOrdinal(d3.schemeCategory10);
+  const g = svg.append("g");
 
-  let root = d3.hierarchy(data)
-    .sum(d => d.value)
-    .sort((a, b) => b.value - a.value);
+  // Extract values and create scales
+  const xValues = data.map(d => Number(d[xKey]));
+  const yValues = data.map(d => Number(d[yKey]));
+  const sizeValues = data.map(d => Number(d[sizeKey]));
 
-  d3.treemap()
-    .size([width, height])
-    .padding(1)(root);
+  const xScale = d3.scaleLinear()
+    .domain(d3.extent(xValues))
+    .nice()
+    .range([margin.left, width - margin.right]);
 
-  let currentRoot = root;
-  let group = svg.append("g").call(render, root);
+  const yScale = d3.scaleLinear()
+    .domain(d3.extent(yValues))
+    .nice()
+    .range([height - margin.bottom, margin.top]);
 
-  function render(group, root) {
-    const node = group
-      .selectAll("g")
-      .data(root.children || [])
-      .join("g")
-      .attr("transform", d => `translate(${d.x0},${d.y0})`);
+  const sizeScale = d3.scaleLinear()
+    .domain(d3.extent(sizeValues))
+    .range([3, 20]); // Bubble radius range
 
-    node.append("rect")
-      .attr("id", d => (d.leafUid = (d.data && d.data.name) ? d.data.name : "unknown").replace(/\s+/g, "_"))
-      .attr("fill", d => color(d.data.name))
-      .attr("width", d => d.x1 - d.x0)
-      .attr("height", d => d.y1 - d.y0)
-      .on("click", (event, d) => {
-        event.stopPropagation();
-        if (!d.children) return;
-        zoomIn(d);
-      });
+  // Add axes
+  g.append("g")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(xScale).tickFormat(d3.format(".0f")))
+    .selectAll("text").style("font-size", "11px");
 
-    // Add name text
-    node.append("text")
-      .attr("x", 4)
-      .attr("y", 13)
-      .attr("font-weight", "bold")
-      .attr("fill", "white")
-      .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
-      .text(d => {
-        // Truncate text based on rectangle width
-        const rectWidth = d.x1 - d.x0;
-        let name = d.data.name || "";
-        if (rectWidth < 40 && name.length > 6) {
-          return name.substring(0, 4) + "...";
-        } else if (rectWidth < 60 && name.length > 10) {
-          return name.substring(0, 8) + "...";
-        } else if (rectWidth < 100 && name.length > 15) {
-          return name.substring(0, 12) + "...";
-        }
-        return name;
-      })
-      .attr("font-size", d => {
-        // Dynamic font size based on rectangle size
-        const rectWidth = d.x1 - d.x0;
-        const rectHeight = d.y1 - d.y0;
-        const minDimension = Math.min(rectWidth, rectHeight);
-        return Math.max(9, Math.min(14, minDimension / 5)) + "px";
-      })
-      .style("opacity", d => {
-        // Show name if rectangle is at least 20px wide and 12px tall
-        const rectWidth = d.x1 - d.x0;
-        const rectHeight = d.y1 - d.y0;
-        return (rectWidth > 20 && rectHeight > 12) ? 1 : 0;
-      });
+  g.append("g")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(d3.axisLeft(yScale).tickFormat(d3.format(".0f")))
+    .selectAll("text").style("font-size", "11px");
 
-    // Add value text
-    node.append("text")
-      .attr("x", 4)
-      .attr("y", d => {
-        // Position value text based on rectangle height
-        const rectHeight = d.y1 - d.y0;
-        return rectHeight > 25 ? 28 : 23;
-      })
-      .attr("fill", "white")
-      .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
-      .text(d => {
-        if (d.value) {
-          const rectWidth = d.x1 - d.x0;
-          if (rectWidth < 40) {
-            // Show abbreviated format for very small rectangles
-            return `$${(d.value / 1000).toFixed(0)}k`;
-          } else {
-            return `$${format(d.value)}`;
-          }
-        }
-        return "";
-      })
-      .attr("font-size", d => {
-        // Dynamic font size for values, slightly smaller than names
-        const rectWidth = d.x1 - d.x0;
-        const rectHeight = d.y1 - d.y0;
-        const minDimension = Math.min(rectWidth, rectHeight);
-        return Math.max(8, Math.min(12, minDimension / 6)) + "px";
-      })
-      .style("opacity", d => {
-        // Show value if rectangle is at least 25px wide and 18px tall
-        const rectWidth = d.x1 - d.x0;
-        const rectHeight = d.y1 - d.y0;
-        return (rectWidth > 25 && rectHeight > 18) ? 1 : 0;
-      });
-  }
+  // Add axis labels
+  g.append("text")
+    .attr("transform", `translate(${width / 2}, ${height - 5})`)
+    .style("text-anchor", "middle")
+    .style("font-size", "12px")
+    .text(xLabel);
 
-  function zoomIn(d) {
-    currentRoot = d;
-    const t = svg.transition().duration(750);
-    group.remove();
-    group = svg.append("g").call(render, currentRoot);
-  }
+  g.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("y", 15)
+    .attr("x", 0 - (height / 2))
+    .style("text-anchor", "middle")
+    .style("font-size", "12px")
+    .text(yLabel);
 
-  function zoomOut() {
-    if (!currentRoot.parent) return;
-    currentRoot = currentRoot.parent;
-    const t = svg.transition().duration(750);
-    group.remove();
-    group = svg.append("g").call(render, currentRoot);
-  }
+  // Create tooltip
+  const tooltip = d3.select(container)
+    .append("div")
+    .style("position", "absolute")
+    .style("background", "rgba(0, 0, 0, 0.8)")
+    .style("color", "white")
+    .style("padding", "8px")
+    .style("border-radius", "4px")
+    .style("font-size", "12px")
+    .style("pointer-events", "none")
+    .style("opacity", 0);
 
-  svg.on("click", () => {
-    zoomOut();
-  });
+  // Add bubbles
+  g.selectAll(".bubble")
+    .data(data)
+    .enter()
+    .append("circle")
+    .attr("class", "bubble")
+    .attr("cx", d => xScale(Number(d[xKey])))
+    .attr("cy", d => yScale(Number(d[yKey])))
+    .attr("r", d => sizeScale(Number(d[sizeKey])))
+    .attr("fill", (d, i) => colors[i % colors.length])
+    .attr("opacity", 0.7)
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1)
+    .on("mouseover", function(event, d) {
+      d3.select(this).attr("opacity", 1);
+      tooltip.transition().duration(200).style("opacity", 1);
+      tooltip.html(`
+        ${xLabel}: ${Number(d[xKey]).toLocaleString()}<br/>
+        ${yLabel}: ${Number(d[yKey]).toLocaleString()}<br/>
+        Size: ${Number(d[sizeKey]).toLocaleString()}
+      `)
+      .style("left", (event.offsetX + 10) + "px")
+      .style("top", (event.offsetY - 10) + "px");
+    })
+    .on("mouseout", function(d) {
+      d3.select(this).attr("opacity", 0.7);
+      tooltip.transition().duration(500).style("opacity", 0);
+    });
 }
-
-
-// SVG to PNG helper using canvg
-const svgToPngDataUrl = async (svgElement) => {
-  const width = svgElement.width.baseVal.value || 400;
-  const height = svgElement.height.baseVal.value || 200;
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  const v = await Canvg.from(ctx, svgElement.outerHTML);
-  await v.render();
-  return canvas.toDataURL('image/png');
-};
 
 function Dashboard({ token, persona, loginName }) {
   const [bookmarkName, setBookmarkName] = useState("");
@@ -635,6 +589,7 @@ function Dashboard({ token, persona, loginName }) {
     doughnutChart: true,
     treemapChart: true,
     histogramChart: true,
+    bubbleChart: true,
     dataTable: true
   });
 
@@ -739,6 +694,7 @@ const handleApplyBookmark = (name) => {
       doughnutChart: true,
       treemapChart: true,
       histogramChart: true,
+      bubbleChart: true,
       dataTable: true
     });
   }
@@ -914,6 +870,23 @@ const histogramRef = useD3Chart(
     bins: 15,
     xLabel: "Revenue",
     yLabel: "Frequency"
+  },
+  [data, selectedProduct, selectedStore, chartRenderKey]
+);
+
+const bubbleRef = useD3Chart(
+  drawBubbleChart,
+  {
+    data: data
+      .filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ),
+    xKey: "revenue",
+    yKey: "profit", 
+    sizeKey: "units_sold",
+    xLabel: "Revenue",
+    yLabel: "Profit"
   },
   [data, selectedProduct, selectedStore, chartRenderKey]
 );
@@ -1387,6 +1360,15 @@ if (loading) return <Spinner animation="border" />;
           <Col md={2} sm={4} xs={6} className="mb-2">
             <Form.Check
               type="checkbox"
+              id="bubbleChart"
+              label="Bubble Chart"
+              checked={selectedCharts.bubbleChart}
+              onChange={() => handleChartSelection('bubbleChart')}
+            />
+          </Col>
+          <Col md={2} sm={4} xs={6} className="mb-2">
+            <Form.Check
+              type="checkbox"
               id="dataTable"
               label="Data Table"
               checked={selectedCharts.dataTable}
@@ -1478,6 +1460,19 @@ if (loading) return <Spinner animation="border" />;
   </Row>
 )}
 
+{selectedCharts.bubbleChart && (
+  <Row>
+    <Col lg={8} md={10} sm={12} className="mb-4">
+      <Card>
+        <Card.Body className="chart-container p-0" style={{ height: "400px" }}>
+          <div ref={bubbleRef} style={{ width: "99%", height: "99%" }}></div>
+        </Card.Body>
+        <Card.Footer className="text-center small">Revenue vs Profit vs Units Sold</Card.Footer>
+      </Card>
+    </Col>
+  </Row>
+)}
+
 {selectedCharts.dataTable && (
   <div ref={tableRef} className="mt-4">
     <div className="table-responsive">
@@ -1504,7 +1499,7 @@ if (loading) return <Spinner animation="border" />;
                     <td>{row.customer_name}</td>
                     <td>{row.units_sold}</td>
                     <td>{row.revenue}</td>
-                    <td>{row.profit}</td>
+                    <td>{Number(row.profit).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1551,6 +1546,7 @@ function PPDashboard({ token, persona, loginName }) {
     doughnutChart: true,
     treemapChart: true,
     histogramChart: true,
+    bubbleChart: true,
     dataTable: true
   });
 
@@ -1571,6 +1567,7 @@ function PPDashboard({ token, persona, loginName }) {
       doughnutChart: selectAll,
       treemapChart: selectAll,
       histogramChart: selectAll,
+      bubbleChart: selectAll,
       dataTable: selectAll
     });
   };
@@ -1613,6 +1610,7 @@ function PPDashboard({ token, persona, loginName }) {
         doughnutChart: true,
         treemapChart: true,
         histogramChart: true,
+        bubbleChart: true,
         dataTable: true
       });
     }
@@ -1762,7 +1760,9 @@ function PPDashboard({ token, persona, loginName }) {
     [data, selectedProduct, selectedStore, chartRenderKey]
   );
 
-  const treemapRef = useD3Chart(
+  const tableRef = useRef();
+
+const treemapRef = useD3Chart(
   drawTreemap,
   {
     name: "root",
@@ -1797,23 +1797,38 @@ function PPDashboard({ token, persona, loginName }) {
   [data, selectedProduct, selectedStore, chartRenderKey]
 );
 
-  const histogramRef = useD3Chart(
-    drawHistogram,
-    {
-      data: data
-        .filter(row =>
-          (selectedProduct ? row.product_id === selectedProduct : true) &&
-          (selectedStore ? row.store_name === selectedStore : true)
-        )
-        .map(row => Number(row.revenue)),
-      bins: 15,
-      xLabel: "Revenue",
-      yLabel: "Frequency"
-    },
-    [data, selectedProduct, selectedStore, chartRenderKey]
-  );
+const histogramRef = useD3Chart(
+  drawHistogram,
+  {
+    data: data
+      .filter(row =>
+        (selectedProduct ? row.product_id === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      )
+      .map(row => Number(row.revenue)),
+    bins: 15,
+    xLabel: "Revenue",
+    yLabel: "Frequency"
+  },
+  [data, selectedProduct, selectedStore, chartRenderKey]
+);
 
-  const tableRef = useRef();
+const bubbleRef = useD3Chart(
+  drawBubbleChart,
+  {
+    data: data
+      .filter(row =>
+        (selectedProduct ? row.product_id === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      ),
+    xKey: "revenue",
+    yKey: "profit", 
+    sizeKey: "units_sold",
+    xLabel: "Revenue",
+    yLabel: "Profit"
+  },
+  [data, selectedProduct, selectedStore, chartRenderKey]
+);
 
   // Fetch products and stores
   useEffect(() => {
@@ -2257,6 +2272,15 @@ function PPDashboard({ token, persona, loginName }) {
                 <Col md={2} sm={4} xs={6} className="mb-2">
                   <Form.Check
                     type="checkbox"
+                    id="bubbleChart-pp"
+                    label="Bubble Chart"
+                    checked={selectedCharts.bubbleChart}
+                    onChange={() => handleChartSelection('bubbleChart')}
+                  />
+                </Col>
+                <Col md={2} sm={4} xs={6} className="mb-2">
+                  <Form.Check
+                    type="checkbox"
                     id="dataTable-pp"
                     label="Data Table"
                     checked={selectedCharts.dataTable}
@@ -2348,6 +2372,19 @@ function PPDashboard({ token, persona, loginName }) {
         </Row>
       )}
 
+      {selectedCharts.bubbleChart && (
+        <Row>
+          <Col lg={8} md={10} sm={12} className="mb-4">
+            <Card>
+              <Card.Body className="chart-container p-0" style={{ height: "400px" }}>
+                <div ref={bubbleRef} style={{ width: "99%", height: "99%" }}></div>
+              </Card.Body>
+              <Card.Footer className="text-center small">Revenue vs Profit vs Units Sold</Card.Footer>
+            </Card>
+          </Col>
+        </Row>
+      )}
+
       {selectedCharts.dataTable && (
         <div ref={tableRef} className="mt-4">
           <div className="table-responsive">
@@ -2374,7 +2411,7 @@ function PPDashboard({ token, persona, loginName }) {
                     <td>{row.customer_name}</td>
                     <td>{row.units_sold}</td>
                     <td>{row.revenue}</td>
-                    <td>{row.profit}</td>
+                    <td>{Number(row.profit).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -2634,4 +2671,141 @@ function drawHistogram(container, { data, bins = 10, xLabel = "Value", yLabel = 
     .style("text-anchor", "middle")
     .style("font-size", "12px")
     .text(yLabel);
+}
+
+function drawTreemap(container, data) {
+  const width = (container.offsetWidth || 320) * 0.99;
+  const height = (container.offsetHeight || 200) * 0.99;
+
+  d3.select(container).selectAll("*").remove();
+
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("width", "99%")
+    .attr("height", "99%")
+    .attr("viewBox", [0, 0, width, height])
+    .attr("preserveAspectRatio", "xMinYMin meet")
+    .style("display", "block");
+
+  const format = d3.format(",d");
+  const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+  let root = d3.hierarchy(data)
+    .sum(d => d.value)
+    .sort((a, b) => b.value - a.value);
+
+  d3.treemap()
+    .size([width, height])
+    .padding(1)(root);
+
+  let currentRoot = root;
+  let group = svg.append("g").call(render, root);
+
+  function render(group, root) {
+    const node = group
+      .selectAll("g")
+      .data(root.children || [])
+      .join("g")
+      .attr("transform", d => `translate(${d.x0},${d.y0})`);
+
+    node.append("rect")
+      .attr("id", d => (d.leafUid = (d.data && d.data.name) ? d.data.name : "unknown").replace(/\s+/g, "_"))
+      .attr("fill", d => color(d.data.name))
+      .attr("width", d => d.x1 - d.x0)
+      .attr("height", d => d.y1 - d.y0)
+      .on("click", (event, d) => {
+        event.stopPropagation();
+        if (!d.children) return;
+        zoomIn(d);
+      });
+
+    // Add name text
+    node.append("text")
+      .attr("x", 4)
+      .attr("y", 13)
+      .attr("font-weight", "bold")
+      .attr("fill", "white")
+      .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
+      .text(d => {
+        // Truncate text based on rectangle width
+        const rectWidth = d.x1 - d.x0;
+        let name = d.data.name || "";
+        if (rectWidth < 40 && name.length > 6) {
+          return name.substring(0, 4) + "...";
+        } else if (rectWidth < 60 && name.length > 10) {
+          return name.substring(0, 8) + "...";
+        } else if (rectWidth < 100 && name.length > 15) {
+          return name.substring(0, 12) + "...";
+        }
+        return name;
+      })
+      .attr("font-size", d => {
+        // Dynamic font size based on rectangle size
+        const rectWidth = d.x1 - d.x0;
+        const rectHeight = d.y1 - d.y0;
+        const minDimension = Math.min(rectWidth, rectHeight);
+        return Math.max(9, Math.min(14, minDimension / 5)) + "px";
+      })
+      .style("opacity", d => {
+        // Show name if rectangle is at least 20px wide and 12px tall
+        const rectWidth = d.x1 - d.x0;
+        const rectHeight = d.y1 - d.y0;
+        return (rectWidth > 20 && rectHeight > 12) ? 1 : 0;
+      });
+
+    // Add value text
+    node.append("text")
+      .attr("x", 4)
+      .attr("y", d => {
+        // Position value text based on rectangle height
+        const rectHeight = d.y1 - d.y0;
+        return rectHeight > 25 ? 28 : 23;
+      })
+      .attr("fill", "white")
+      .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
+      .text(d => {
+        if (d.value) {
+          const rectWidth = d.x1 - d.x0;
+          if (rectWidth < 40) {
+            // Show abbreviated format for very small rectangles
+            return `$${(d.value / 1000).toFixed(0)}k`;
+          } else {
+            return `$${format(d.value)}`;
+          }
+        }
+        return "";
+      })
+      .attr("font-size", d => {
+        // Dynamic font size for values, slightly smaller than names
+        const rectWidth = d.x1 - d.x0;
+        const rectHeight = d.y1 - d.y0;
+        const minDimension = Math.min(rectWidth, rectHeight);
+        return Math.max(8, Math.min(12, minDimension / 6)) + "px";
+      })
+      .style("opacity", d => {
+        // Show value if rectangle is at least 25px wide and 18px tall
+        const rectWidth = d.x1 - d.x0;
+        const rectHeight = d.y1 - d.y0;
+        return (rectWidth > 25 && rectHeight > 18) ? 1 : 0;
+      });
+  }
+
+  function zoomIn(d) {
+    currentRoot = d;
+    const t = svg.transition().duration(750);
+    group.remove();
+    group = svg.append("g").call(render, currentRoot);
+  }
+
+  function zoomOut() {
+    if (!currentRoot.parent) return;
+    currentRoot = currentRoot.parent;
+    const t = svg.transition().duration(750);
+    group.remove();
+    group = svg.append("g").call(render, currentRoot);
+  }
+
+  svg.on("click", () => {
+    zoomOut();
+  });
 }
