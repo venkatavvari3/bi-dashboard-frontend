@@ -238,10 +238,75 @@ function drawTreemap(container, data) {
         zoomIn(d);
       });
 
+    // Add name text
     node.append("text")
       .attr("x", 4)
       .attr("y", 13)
-      .text(d => d.data.name);
+      .attr("font-weight", "bold")
+      .attr("fill", "white")
+      .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
+      .text(d => {
+        // Truncate text based on rectangle width
+        const rectWidth = d.x1 - d.x0;
+        let name = d.data.name || "";
+        if (rectWidth < 40 && name.length > 6) {
+          return name.substring(0, 4) + "...";
+        } else if (rectWidth < 60 && name.length > 10) {
+          return name.substring(0, 8) + "...";
+        } else if (rectWidth < 100 && name.length > 15) {
+          return name.substring(0, 12) + "...";
+        }
+        return name;
+      })
+      .attr("font-size", d => {
+        // Dynamic font size based on rectangle size
+        const rectWidth = d.x1 - d.x0;
+        const rectHeight = d.y1 - d.y0;
+        const minDimension = Math.min(rectWidth, rectHeight);
+        return Math.max(9, Math.min(14, minDimension / 5)) + "px";
+      })
+      .style("opacity", d => {
+        // Show name if rectangle is at least 20px wide and 12px tall
+        const rectWidth = d.x1 - d.x0;
+        const rectHeight = d.y1 - d.y0;
+        return (rectWidth > 20 && rectHeight > 12) ? 1 : 0;
+      });
+
+    // Add value text
+    node.append("text")
+      .attr("x", 4)
+      .attr("y", d => {
+        // Position value text based on rectangle height
+        const rectHeight = d.y1 - d.y0;
+        return rectHeight > 25 ? 28 : 23;
+      })
+      .attr("fill", "white")
+      .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
+      .text(d => {
+        if (d.value) {
+          const rectWidth = d.x1 - d.x0;
+          if (rectWidth < 40) {
+            // Show abbreviated format for very small rectangles
+            return `$${(d.value / 1000).toFixed(0)}k`;
+          } else {
+            return `$${format(d.value)}`;
+          }
+        }
+        return "";
+      })
+      .attr("font-size", d => {
+        // Dynamic font size for values, slightly smaller than names
+        const rectWidth = d.x1 - d.x0;
+        const rectHeight = d.y1 - d.y0;
+        const minDimension = Math.min(rectWidth, rectHeight);
+        return Math.max(8, Math.min(12, minDimension / 6)) + "px";
+      })
+      .style("opacity", d => {
+        // Show value if rectangle is at least 25px wide and 18px tall
+        const rectWidth = d.x1 - d.x0;
+        const rectHeight = d.y1 - d.y0;
+        return (rectWidth > 25 && rectHeight > 18) ? 1 : 0;
+      });
   }
 
   function zoomIn(d) {
@@ -1113,9 +1178,9 @@ if (loading) return <Spinner animation="border" />;
 
 {selectedCharts.treemapChart && (
   <Row>
-      <Col lg={6} md={12} className="mb-4">
+      <Col lg={8} md={12} className="mb-4">
         <Card>
-          <Card.Body className="chart-container p-0">
+          <Card.Body className="chart-container p-0" style={{ height: "400px" }}>
             <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
           </Card.Body>
           <Card.Footer className="text-center small">Revenue Treemap</Card.Footer>
@@ -1945,9 +2010,9 @@ function PPDashboard({ token, persona, loginName }) {
 
       <Row>
         {selectedCharts.treemapChart && (
-          <Col lg={6} md={12} className="mb-4">
+          <Col lg={8} md={12} className="mb-4">
             <Card>
-              <Card.Body className="chart-container p-0">
+              <Card.Body className="chart-container p-0" style={{ height: "400px" }}>
                 <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
               </Card.Body>
               <Card.Footer className="text-center small">Revenue Treemap</Card.Footer>
