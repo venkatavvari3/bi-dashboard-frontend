@@ -437,3 +437,27 @@ body {
     font-size: 9px;
   }
 }
+
+/* Additional spacing for charts with detailed labels */
+.chart-container[style*="height: 400px"] {
+  /* For pie and doughnut charts with revenue/units info */
+  min-height: 420px;
+}
+
+/* Ensure sufficient space for longer legends */
+.legend text {
+  font-size: 9px !important;
+  font-weight: 500;
+}
+
+/* Mobile adjustments for detailed charts */
+@media (max-width: 768px) {
+  .chart-container[style*="height: 400px"] {
+    height: 380px !important;
+    min-height: 360px;
+  }
+  
+  .legend text {
+    font-size: 8px !important;
+  }
+}

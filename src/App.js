@@ -87,8 +87,8 @@ function drawBarChart(container, { labels, values }) {
 function drawPieChart(container, { labels, values, colors }) {
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
-  const legendRows = Math.ceil(labels.length / 3);
-  const legendHeight = legendRows * 20 + 10; // Dynamic height: 20px per row + padding
+  const legendRows = Math.ceil(labels.length / 3); // Back to 3 columns for shorter text
+  const legendHeight = legendRows * 20 + 10; // Standard height per row and padding
   const chartHeight = height - legendHeight - 30; // Reserve space for legend plus extra margin
   const radius = Math.min(width * 0.8, chartHeight * 0.8) / 2; // Constrain radius more conservatively
   d3.select(container).selectAll("*").remove();
@@ -130,19 +130,41 @@ function drawPieChart(container, { labels, values, colors }) {
     .attr("stroke", "#fff")
     .attr("stroke-width", 2);
 
-  // Add percentage labels inside slices for larger slices
+  // Add percentage and revenue labels inside slices for larger slices
   slices.append("text")
     .attr("transform", d => `translate(${arc.centroid(d)})`)
     .attr("text-anchor", "middle")
     .attr("dominant-baseline", "middle")
-    .style("font-size", "12px")
+    .style("font-size", "11px")
     .style("font-weight", "bold")
     .style("fill", "white")
     .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
     .text(d => {
       const percentage = (d.data / total * 100);
       // Only show percentage inside if slice is large enough (> 5%)
-      return percentage > 5 ? `${percentage.toFixed(1)}%` : "";
+      if (percentage > 5) {
+        const revenue = d.data.toLocaleString();
+        return `${percentage.toFixed(1)}%`;
+      }
+      return "";
+    });
+
+  // Add revenue values inside slices for larger slices (second line)
+  slices.append("text")
+    .attr("transform", d => `translate(${arc.centroid(d)[0]}, ${arc.centroid(d)[1] + 12})`)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .style("font-size", "9px")
+    .style("font-weight", "normal")
+    .style("fill", "white")
+    .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
+    .text(d => {
+      const percentage = (d.data / total * 100);
+      // Only show revenue inside if slice is large enough (> 5%)
+      if (percentage > 5) {
+        return `$${d.data.toLocaleString()}`;
+      }
+      return "";
     });
 
   // Add labels and leader lines for all slices
@@ -186,7 +208,8 @@ function drawPieChart(container, { labels, values, colors }) {
     .text((d, i) => {
       const percentage = (d.data / total * 100);
       if (percentage <= 5) {
-        return `${labels[i]} (${percentage.toFixed(1)}%)`;
+        const revenue = d.data.toLocaleString();
+        return `${labels[i]} (${percentage.toFixed(1)}%, $${revenue})`;
       }
       return "";
     });
@@ -216,10 +239,10 @@ function drawPieChart(container, { labels, values, colors }) {
     .style("font-size", "10px")
     .style("fill", "#333")
     .text((d, i) => {
-      const percentage = (values[i] / total * 100);
-      const labelText = `${d} (${percentage.toFixed(1)}%)`;
+      // Just show the label name, no percentage or revenue
+      const labelText = d;
       // Truncate long labels to fit in available space
-      const maxLength = Math.floor((width / 3 - 30) / 6); // Approximate character width
+      const maxLength = Math.floor((width / 3 - 30) / 6); // Approximate character width for 3 columns
       return labelText.length > maxLength ? labelText.substring(0, maxLength - 3) + "..." : labelText;
     });
 }
@@ -264,8 +287,8 @@ function drawLineChart(container, { labels, values }) {
 function drawDoughnutChart(container, { labels, values, colors }) {
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
-  const legendRows = Math.ceil(labels.length / 3);
-  const legendHeight = legendRows * 20 + 10; // Dynamic height: 20px per row + padding
+  const legendRows = Math.ceil(labels.length / 3); // Back to 3 columns for shorter text
+  const legendHeight = legendRows * 20 + 10; // Standard height per row and padding
   const chartHeight = height - legendHeight - 30; // Reserve space for legend plus extra margin
   const radius = Math.min(width * 0.8, chartHeight * 0.8) / 2; // Constrain radius more conservatively
   d3.select(container).selectAll("*").remove();
@@ -307,12 +330,12 @@ function drawDoughnutChart(container, { labels, values, colors }) {
     .attr("stroke", "#fff")
     .attr("stroke-width", 2);
 
-  // Add percentage labels inside slices for larger slices
+  // Add percentage and units labels inside slices for larger slices
   slices.append("text")
     .attr("transform", d => `translate(${arc.centroid(d)})`)
     .attr("text-anchor", "middle")
     .attr("dominant-baseline", "middle")
-    .style("font-size", "11px")
+    .style("font-size", "10px")
     .style("font-weight", "bold")
     .style("fill", "white")
     .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
@@ -320,6 +343,21 @@ function drawDoughnutChart(container, { labels, values, colors }) {
       const percentage = (d.data / total * 100);
       // Only show percentage inside if slice is large enough (> 8% for doughnut)
       return percentage > 8 ? `${percentage.toFixed(1)}%` : "";
+    });
+
+  // Add units sold inside slices for larger slices (second line)
+  slices.append("text")
+    .attr("transform", d => `translate(${arc.centroid(d)[0]}, ${arc.centroid(d)[1] + 11})`)
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .style("font-size", "8px")
+    .style("font-weight", "normal")
+    .style("fill", "white")
+    .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
+    .text(d => {
+      const percentage = (d.data / total * 100);
+      // Only show units inside if slice is large enough (> 8% for doughnut)
+      return percentage > 8 ? `${d.data.toLocaleString()} units` : "";
     });
 
   // Add total value in center of doughnut
@@ -381,7 +419,8 @@ function drawDoughnutChart(container, { labels, values, colors }) {
     .text((d, i) => {
       const percentage = (d.data / total * 100);
       if (percentage <= 8) {
-        return `${labels[i]} (${percentage.toFixed(1)}%)`;
+        const units = d.data.toLocaleString();
+        return `${labels[i]} (${percentage.toFixed(1)}%, ${units} units)`;
       }
       return "";
     });
@@ -411,10 +450,10 @@ function drawDoughnutChart(container, { labels, values, colors }) {
     .style("font-size", "10px")
     .style("fill", "#333")
     .text((d, i) => {
-      const percentage = (values[i] / total * 100);
-      const labelText = `${d} (${percentage.toFixed(1)}%)`;
+      // Just show the label name, no percentage or units
+      const labelText = d;
       // Truncate long labels to fit in available space
-      const maxLength = Math.floor((width / 3 - 30) / 6); // Approximate character width
+      const maxLength = Math.floor((width / 3 - 30) / 6); // Approximate character width for 3 columns
       return labelText.length > maxLength ? labelText.substring(0, maxLength - 3) + "..." : labelText;
     });
 }
