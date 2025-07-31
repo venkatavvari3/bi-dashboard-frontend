@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Container, Navbar, Button, Spinner, Alert, Table, Form, Row, Col, Card, Nav } from "react-bootstrap";
 import * as d3 from "d3";
 import axios from "axios";
@@ -87,10 +87,21 @@ function drawBarChart(container, { labels, values }) {
 function drawPieChart(container, { labels, values, colors }) {
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
-  const legendRows = Math.ceil(labels.length / 3); // Back to 3 columns for shorter text
-  const legendHeight = legendRows * 20 + 10; // Standard height per row and padding
-  const chartHeight = height - legendHeight - 30; // Reserve space for legend plus extra margin
-  const radius = Math.min(width * 0.8, chartHeight * 0.8) / 2; // Constrain radius more conservatively
+  
+  // Dynamically adjust layout based on number of items and container size
+  const numItems = labels.length;
+  const legendColumns = numItems > 8 ? 4 : 3; // More columns for many items
+  const legendRows = Math.ceil(numItems / legendColumns);
+  const legendItemHeight = numItems > 12 ? 16 : 20; // Smaller rows for many items
+  const legendHeight = legendRows * legendItemHeight + 15;
+  
+  // Reserve more space for legend when there are many items
+  const chartHeight = height - legendHeight - (numItems > 8 ? 40 : 30);
+  
+  // Adjust radius based on container size and number of items
+  const maxRadius = Math.min(width * 0.35, chartHeight * 0.4); // Smaller radius for more label space
+  const radius = numItems > 12 ? maxRadius * 0.8 : maxRadius; // Even smaller for many items
+  
   d3.select(container).selectAll("*").remove();
   const svg = d3.select(container)
     .append("svg")
@@ -100,7 +111,7 @@ function drawPieChart(container, { labels, values, colors }) {
     .attr("preserveAspectRatio", "xMidYMid meet")
     .style("display", "block");
   const g = svg.append("g")
-    .attr("transform", `translate(${width / 2},${chartHeight / 2 + 15})`); // Center in available chart space
+    .attr("transform", `translate(${width / 2},${chartHeight / 2 + 20})`); // Center in available chart space
 
   // Calculate total for percentage calculations
   const total = values.reduce((sum, value) => sum + value, 0);
@@ -114,8 +125,8 @@ function drawPieChart(container, { labels, values, colors }) {
     .outerRadius(radius);
     
   const outerArc = d3.arc()
-    .innerRadius(radius * 1.1)
-    .outerRadius(radius * 1.1);
+    .innerRadius(radius * 1.3)
+    .outerRadius(radius * 1.3);
   
   const slices = g.selectAll(".slice")
     .data(pie(values))
@@ -130,20 +141,20 @@ function drawPieChart(container, { labels, values, colors }) {
     .attr("stroke", "#fff")
     .attr("stroke-width", 2);
 
-  // Add percentage and revenue labels inside slices for larger slices
+  // Add percentage labels inside slices only for larger slices
   slices.append("text")
     .attr("transform", d => `translate(${arc.centroid(d)})`)
     .attr("text-anchor", "middle")
     .attr("dominant-baseline", "middle")
-    .style("font-size", "11px")
+    .style("font-size", numItems > 8 ? "10px" : "11px") // Smaller font for many items
     .style("font-weight", "bold")
     .style("fill", "white")
     .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
     .text(d => {
       const percentage = (d.data / total * 100);
-      // Only show percentage inside if slice is large enough (> 5%)
-      if (percentage > 5) {
-        const revenue = d.data.toLocaleString();
+      // Always show percentage for slices >= 4%, or adjust threshold based on number of items
+      const threshold = numItems > 12 ? 3 : 4; // Lower threshold to show more labels
+      if (percentage >= threshold) {
         return `${percentage.toFixed(1)}%`;
       }
       return "";
@@ -154,62 +165,90 @@ function drawPieChart(container, { labels, values, colors }) {
     .attr("transform", d => `translate(${arc.centroid(d)[0]}, ${arc.centroid(d)[1] + 12})`)
     .attr("text-anchor", "middle")
     .attr("dominant-baseline", "middle")
-    .style("font-size", "9px")
+    .style("font-size", numItems > 8 ? "8px" : "9px") // Smaller font for many items
     .style("font-weight", "normal")
     .style("fill", "white")
     .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
     .text(d => {
       const percentage = (d.data / total * 100);
-      // Only show revenue inside if slice is large enough (> 5%)
-      if (percentage > 5) {
-        return `$${d.data.toLocaleString()}`;
+      const threshold = numItems > 12 ? 3 : 4; // Lower threshold to show more labels
+      if (percentage >= threshold) {
+        // Show abbreviated values for small slices
+        const value = d.data;
+        if (value >= 1000000) {
+          return `$${(value / 1000000).toFixed(1)}M`;
+        } else if (value >= 1000) {
+          return `$${(value / 1000).toFixed(0)}k`;
+        } else {
+          return `$${value.toLocaleString()}`;
+        }
       }
       return "";
     });
 
-  // Add labels and leader lines for all slices
+  // Add labels and leader lines for smaller slices
   const labelLines = slices.append("polyline")
     .attr("stroke", "#666")
     .attr("stroke-width", 1)
     .attr("fill", "none")
     .attr("points", d => {
       const percentage = (d.data / total * 100);
-      if (percentage <= 5) { // Only show leader lines for small slices
+      const threshold = numItems > 12 ? 3 : 4; // Lower threshold
+      if (percentage < threshold) { // Only show leader lines for small slices below threshold
         const pos = outerArc.centroid(d);
         const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
-        pos[0] = radius * 0.95 * (midAngle < Math.PI ? 1 : -1);
+        pos[0] = radius * 1.4 * (midAngle < Math.PI ? 1 : -1);
         return [arc.centroid(d), outerArc.centroid(d), pos];
       }
       return null;
     });
 
-  // Add external labels
+  // Add external labels for smaller slices
   slices.append("text")
     .attr("transform", d => {
       const percentage = (d.data / total * 100);
-      if (percentage <= 5) { // External labels for small slices
+      const threshold = numItems > 12 ? 3 : 4; // Lower threshold
+      if (percentage < threshold) { // External labels for small slices below threshold
         const pos = outerArc.centroid(d);
         const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
-        pos[0] = radius * 1.0 * (midAngle < Math.PI ? 1 : -1);
+        pos[0] = radius * 1.5 * (midAngle < Math.PI ? 1 : -1);
         return `translate(${pos})`;
       }
       return null;
     })
     .style("text-anchor", d => {
-      if ((d.data / total * 100) <= 5) {
+      const percentage = (d.data / total * 100);
+      const threshold = numItems > 12 ? 3 : 4;
+      if (percentage < threshold) {
         const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
         return midAngle < Math.PI ? "start" : "end";
       }
       return "middle";
     })
-    .style("font-size", "10px")
+    .style("font-size", numItems > 12 ? "8px" : "10px") // Smaller font for many items
     .style("font-weight", "bold")
     .style("fill", "#333")
     .text((d, i) => {
       const percentage = (d.data / total * 100);
-      if (percentage <= 5) {
-        const revenue = d.data.toLocaleString();
-        return `${labels[i]} (${percentage.toFixed(1)}%, $${revenue})`;
+      const threshold = numItems > 12 ? 3 : 4;
+      if (percentage < threshold) {
+        const value = d.data;
+        let valueStr;
+        if (value >= 1000000) {
+          valueStr = `$${(value / 1000000).toFixed(1)}M`;
+        } else if (value >= 1000) {
+          valueStr = `$${(value / 1000).toFixed(0)}k`;
+        } else {
+          valueStr = `$${value.toLocaleString()}`;
+        }
+        
+        // Truncate label name if too long
+        const maxLabelLength = numItems > 12 ? 12 : 15;
+        const labelName = labels[i].length > maxLabelLength ? 
+          labels[i].substring(0, maxLabelLength - 2) + "..." : 
+          labels[i];
+        
+        return `${labelName} (${percentage.toFixed(1)}%, ${valueStr})`;
       }
       return "";
     });
@@ -225,25 +264,29 @@ function drawPieChart(container, { labels, values, colors }) {
     .enter()
     .append("g")
     .attr("class", "legend-item")
-    .attr("transform", (d, i) => `translate(${(i % 3) * (width / 3 - 10)}, ${Math.floor(i / 3) * 20})`);
+    .attr("transform", (d, i) => {
+      const col = i % legendColumns;
+      const row = Math.floor(i / legendColumns);
+      const colWidth = (width - 20) / legendColumns;
+      return `translate(${col * colWidth}, ${row * legendItemHeight})`;
+    });
 
   legendItems.append("rect")
-    .attr("width", 12)
-    .attr("height", 12)
+    .attr("width", 10)
+    .attr("height", 10)
     .attr("fill", (d, i) => colors[i % colors.length]);
 
   legendItems.append("text")
-    .attr("x", 16)
-    .attr("y", 6)
+    .attr("x", 14)
+    .attr("y", 5)
     .attr("dy", "0.35em")
-    .style("font-size", "10px")
+    .style("font-size", numItems > 12 ? "8px" : "10px") // Smaller font for many items
     .style("fill", "#333")
     .text((d, i) => {
-      // Just show the label name, no percentage or revenue
-      const labelText = d;
-      // Truncate long labels to fit in available space
-      const maxLength = Math.floor((width / 3 - 30) / 6); // Approximate character width for 3 columns
-      return labelText.length > maxLength ? labelText.substring(0, maxLength - 3) + "..." : labelText;
+      // Just show the label name, truncated if necessary
+      const colWidth = (width - 20) / legendColumns;
+      const maxLength = Math.floor((colWidth - 20) / (numItems > 12 ? 5 : 6)); // Adjust for font size
+      return d.length > maxLength ? d.substring(0, maxLength - 2) + "..." : d;
     });
 }
 
@@ -1550,6 +1593,9 @@ function PPDashboard({ token, persona, loginName }) {
     dataTable: true
   });
 
+  // Performance optimization for data table
+  const [visibleRows, setVisibleRows] = useState(100); // Show first 100 rows by default
+
   // Handle chart selection toggle
   const handleChartSelection = (chartName) => {
     setSelectedCharts(prev => ({
@@ -1672,163 +1718,156 @@ function PPDashboard({ token, persona, loginName }) {
     return () => clearTimeout(timer);
   }, [selectedCharts]);
 
+  // Memoized filtered data to improve performance
+  const filteredData = useMemo(() => {
+    return data.filter(row =>
+      (selectedProduct ? row.product_id === selectedProduct : true) &&
+      (selectedStore ? row.store_name === selectedStore : true)
+    );
+  }, [data, selectedProduct, selectedStore]);
+
+  // Reset visible rows when filters change
+  useEffect(() => {
+    setVisibleRows(100);
+  }, [selectedProduct, selectedStore]);
+
+  // Memoized chart data to avoid recalculating on every render
+  const chartData = useMemo(() => {
+    // Bar chart data - Products by Revenue
+    const productIds = [...new Set(filteredData.map(row => row.product_id))];
+    const productRevenues = productIds.map(productId => {
+      return filteredData
+        .filter(row => row.product_id === productId)
+        .reduce((sum, row) => sum + Number(row.revenue), 0);
+    });
+
+    // Pie chart data - Stores by Revenue
+    const storeNames = [...new Set(filteredData.map(row => row.store_name))];
+    const storeRevenues = storeNames.map(storeName => {
+      return filteredData
+        .filter(row => row.store_name === storeName)
+        .reduce((sum, row) => sum + Number(row.revenue), 0);
+    });
+
+    // Line chart data - Revenue by Date
+    const dates = [...new Set(filteredData.map(row => row.date))].sort();
+    const dateRevenues = dates.map(date => {
+      return filteredData
+        .filter(row => row.date === date)
+        .reduce((sum, row) => sum + Number(row.revenue), 0);
+    });
+
+    // Doughnut chart data - Categories by Units Sold
+    const categories = [...new Set(filteredData.map(row => row.category))];
+    const categoryUnitsSold = categories.map(category => {
+      return filteredData
+        .filter(row => row.category === category)
+        .reduce((sum, row) => sum + Number(row.units_sold), 0);
+    });
+
+    // Histogram data - Revenue values for distribution
+    const revenueValues = filteredData.map(row => Number(row.revenue));
+
+    // Bubble chart data - Product performance
+    const bubbleData = productIds.map(productId => {
+      const productRows = filteredData.filter(row => row.product_id === productId);
+      const revenue = productRows.reduce((sum, row) => sum + Number(row.revenue), 0);
+      const profit = productRows.reduce((sum, row) => sum + Number(row.profit), 0);
+      const unitsSold = productRows.reduce((sum, row) => sum + Number(row.units_sold), 0);
+      
+      return {
+        id: productId,
+        revenue,
+        profit,
+        units_sold: unitsSold
+      };
+    });
+
+    // Treemap data - Hierarchical view by Category > Product
+    const treemapChildren = categories.map(category => ({
+      name: category,
+      children: productIds
+        .filter(productId => {
+          return filteredData.some(row => row.category === category && row.product_id === productId);
+        })
+        .map(productId => ({
+          name: productId,
+          value: filteredData
+            .filter(row => row.category === category && row.product_id === productId)
+            .reduce((sum, row) => sum + Number(row.revenue), 0)
+        }))
+        .filter(item => item.value > 0)
+    })).filter(category => category.children.length > 0);
+
+    return {
+      bar: { labels: productIds, values: productRevenues },
+      pie: { labels: storeNames, values: storeRevenues },
+      line: { labels: dates, values: dateRevenues },
+      doughnut: { labels: categories, values: categoryUnitsSold },
+      histogram: revenueValues,
+      bubble: bubbleData,
+      treemap: { name: "root", children: treemapChildren }
+    };
+  }, [filteredData]);
+
   const barRef = useD3Chart(
     drawBarChart,
-    {
-      labels: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_id === selectedProduct : true) &&
-        (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.product_id))],
-      values: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_id === selectedProduct : true) &&
-        (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.product_id))].map(
-        p => data.filter(row =>
-          (selectedProduct ? row.product_id === selectedProduct : true) &&
-          (selectedStore ? row.store_name === selectedStore : true) &&
-          row.product_id === p
-        ).reduce((a, b) => a + Number(b.revenue), 0)
-      )
-    },
-    [data, selectedProduct, selectedStore]
+    chartData.bar,
+    [chartData.bar]
   );
 
   const pieColors = ["#ff6384", "#ffce56", "#36a2eb", "#9966ff", "#4bc0c0"];
   const pieRef = useD3Chart(
     drawPieChart,
-    {
-      labels: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_id === selectedProduct : true) &&
-        (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.store_name))],
-      values: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_id === selectedProduct : true) &&
-        (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.store_name))].map(
-        s => data.filter(row =>
-          (selectedProduct ? row.product_id === selectedProduct : true) &&
-          (selectedStore ? row.store_name === selectedStore : true) &&
-          row.store_name === s
-        ).reduce((a, b) => a + Number(b.revenue), 0)
-      ),
-      colors: pieColors
-    },
-    [data, selectedProduct, selectedStore]
+    { ...chartData.pie, colors: pieColors },
+    [chartData.pie]
   );
 
   const lineRef = useD3Chart(
     drawLineChart,
-    {
-      labels: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_id === selectedProduct : true) &&
-        (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.date))].sort(),
-      values: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_id === selectedProduct : true) &&
-        (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.date))].sort().map(
-        d => data.filter(row =>
-          (selectedProduct ? row.product_id === selectedProduct : true) &&
-          (selectedStore ? row.store_name === selectedStore : true) &&
-          row.date === d
-        ).reduce((a, b) => a + Number(b.revenue), 0)
-      )
-    },
-    [data, selectedProduct, selectedStore, chartRenderKey]
+    chartData.line,
+    [chartData.line, chartRenderKey]
   );
 
   const doughnutColors = ["#ff6384", "#ffce56", "#36a2eb", "#4bc0c0"];
   const doughnutRef = useD3Chart(
     drawDoughnutChart,
-    {
-      labels: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_id === selectedProduct : true) &&
-        (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.category))],
-      values: [...new Set(data.filter(row =>
-        (selectedProduct ? row.product_id === selectedProduct : true) &&
-        (selectedStore ? row.store_name === selectedStore : true)
-      ).map(row => row.category))].map(
-        c => data.filter(row =>
-          (selectedProduct ? row.product_id === selectedProduct : true) &&
-          (selectedStore ? row.store_name === selectedStore : true) &&
-          row.category === c
-        ).reduce((a, b) => a + Number(b.units_sold), 0)
-      ),
-      colors: doughnutColors
-    },
-    [data, selectedProduct, selectedStore, chartRenderKey]
+    { ...chartData.doughnut, colors: doughnutColors },
+    [chartData.doughnut, chartRenderKey]
   );
 
   const tableRef = useRef();
 
-const treemapRef = useD3Chart(
-  drawTreemap,
-  {
-    name: "root",
-    children: [...new Set(data
-      .filter(row =>
-        (selectedProduct ? row.product_id === selectedProduct : true) &&
-        (selectedStore ? row.store_name === selectedStore : true)
-      )
-      .map(row => row.category)
-    )].map(category => ({
-      name: category,
-      children: [...new Set(data
-        .filter(row =>
-          (selectedProduct ? row.product_id === selectedProduct : true) &&
-          (selectedStore ? row.store_name === selectedStore : true) &&
-          row.category === category
-        )
-        .map(row => row.product_id)
-      )].map(product => ({
-        name: product,
-        value: data
-          .filter(row =>
-            (selectedProduct ? row.product_id === selectedProduct : true) &&
-            (selectedStore ? row.store_name === selectedStore : true) &&
-            row.category === category &&
-            row.product_id === product
-          )
-          .reduce((a, b) => a + Number(b.revenue), 0)
-      }))
-    }))
-  },
-  [data, selectedProduct, selectedStore, chartRenderKey]
-);
+  const treemapRef = useD3Chart(
+    drawTreemap,
+    chartData.treemap,
+    [chartData.treemap, chartRenderKey]
+  );
 
-const histogramRef = useD3Chart(
-  drawHistogram,
-  {
-    data: data
-      .filter(row =>
-        (selectedProduct ? row.product_id === selectedProduct : true) &&
-        (selectedStore ? row.store_name === selectedStore : true)
-      )
-      .map(row => Number(row.revenue)),
-    bins: 15,
-    xLabel: "Revenue",
-    yLabel: "Frequency"
-  },
-  [data, selectedProduct, selectedStore, chartRenderKey]
-);
+  const histogramRef = useD3Chart(
+    drawHistogram,
+    { 
+      data: chartData.histogram, 
+      bins: 10, 
+      xLabel: "Revenue", 
+      yLabel: "Frequency" 
+    },
+    [chartData.histogram, chartRenderKey]
+  );
 
-const bubbleRef = useD3Chart(
-  drawBubbleChart,
-  {
-    data: data
-      .filter(row =>
-        (selectedProduct ? row.product_id === selectedProduct : true) &&
-        (selectedStore ? row.store_name === selectedStore : true)
-      ),
-    xKey: "revenue",
-    yKey: "profit", 
-    sizeKey: "units_sold",
-    xLabel: "Revenue",
-    yLabel: "Profit"
-  },
-  [data, selectedProduct, selectedStore, chartRenderKey]
-);
+  const bubbleRef = useD3Chart(
+    drawBubbleChart,
+    {
+      data: chartData.bubble,
+      xKey: "revenue",
+      yKey: "profit", 
+      sizeKey: "units_sold",
+      xLabel: "Revenue",
+      yLabel: "Profit",
+      colors: ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0", "#9966ff"]
+    },
+    [chartData.bubble, chartRenderKey]
+  );
 
   // Fetch products and stores
   useEffect(() => {
@@ -1856,12 +1895,6 @@ const bubbleRef = useD3Chart(
     fetchData();
     // Removed auto-refresh
   }, [token]);
-
-
-  const filteredData = data.filter(row =>
-    (selectedProduct ? row.product_id === selectedProduct : true) &&
-    (selectedStore ? row.store_name === selectedStore : true)
-  );
 
   const exportExcel = async () => {
     const workbook = new ExcelJS.Workbook();
@@ -2322,9 +2355,9 @@ const bubbleRef = useD3Chart(
 
       {selectedCharts.pieChart && (
         <Row>
-          <Col lg={6} md={8} sm={12} className="mb-4">
+          <Col lg={8} md={10} sm={12} className="mb-4">
             <Card>
-              <Card.Body className="chart-container p-0" style={{ height: "400px" }}>
+              <Card.Body className="chart-container p-0" style={{ height: "500px" }}>
                 <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
               </Card.Body>
               <Card.Footer className="text-center small">Revenue by Store</Card.Footer>
@@ -2402,7 +2435,7 @@ const bubbleRef = useD3Chart(
                 </tr>
               </thead>
               <tbody>
-                {filteredData.map((row, idx) => (
+                {filteredData.slice(0, visibleRows).map((row, idx) => (
                   <tr key={idx}>
                     <td>{row.date}</td>
                     <td>{row.product_name}</td>
@@ -2416,6 +2449,27 @@ const bubbleRef = useD3Chart(
                 ))}
               </tbody>
             </Table>
+            {filteredData.length > visibleRows && (
+              <div className="text-center mt-3">
+                <Button 
+                  variant="outline-primary" 
+                  onClick={() => setVisibleRows(prev => prev + 100)}
+                >
+                  Show More Rows ({visibleRows} of {filteredData.length} shown)
+                </Button>
+              </div>
+            )}
+            {visibleRows > 100 && (
+              <div className="text-center mt-2">
+                <Button 
+                  variant="outline-secondary" 
+                  size="sm"
+                  onClick={() => setVisibleRows(100)}
+                >
+                  Show Less
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}
