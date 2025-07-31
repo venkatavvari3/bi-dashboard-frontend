@@ -85,8 +85,12 @@ function drawBarChart(container, { labels, values }) {
 }
 
 function drawPieChart(container, { labels, values, colors }) {
+  console.log('Pie chart data:', { labels, values }); // Debug log
+  
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
+  
+  console.log('Container dimensions:', { width, height }); // Debug log
   
   // Dynamically adjust layout based on number of items and container size
   const numItems = labels.length;
@@ -98,9 +102,11 @@ function drawPieChart(container, { labels, values, colors }) {
   // Reserve more space for legend when there are many items
   const chartHeight = height - legendHeight - (numItems > 8 ? 40 : 30);
   
-  // Adjust radius based on container size and number of items
-  const maxRadius = Math.min(width * 0.35, chartHeight * 0.4); // Smaller radius for more label space
-  const radius = numItems > 12 ? maxRadius * 0.8 : maxRadius; // Even smaller for many items
+  // Increase radius to make chart larger and more visible
+  const maxRadius = Math.min(width * 0.4, chartHeight * 0.45); // Larger radius
+  const radius = numItems > 12 ? maxRadius * 0.9 : maxRadius; // Less reduction for many items
+  
+  console.log('Chart dimensions:', { chartHeight, radius }); // Debug log
   
   d3.select(container).selectAll("*").remove();
   const svg = d3.select(container)
@@ -141,116 +147,58 @@ function drawPieChart(container, { labels, values, colors }) {
     .attr("stroke", "#fff")
     .attr("stroke-width", 2);
 
-  // Add percentage labels inside slices only for larger slices
-  slices.append("text")
-    .attr("transform", d => `translate(${arc.centroid(d)})`)
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "middle")
-    .style("font-size", numItems > 8 ? "10px" : "11px") // Smaller font for many items
-    .style("font-weight", "bold")
-    .style("fill", "white")
-    .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
-    .text(d => {
-      const percentage = (d.data / total * 100);
-      // Always show percentage for slices >= 3%, or any slice > 15% (top slices)
-      const threshold = 3;
-      if (percentage >= threshold || percentage > 15) {
-        return `${percentage.toFixed(1)}%`;
-      }
-      return "";
-    });
+  // No internal labels - all labels will be external for better visibility
 
-  // Add revenue values inside slices for larger slices (second line)
-  slices.append("text")
-    .attr("transform", d => `translate(${arc.centroid(d)[0]}, ${arc.centroid(d)[1] + 12})`)
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "middle")
-    .style("font-size", numItems > 8 ? "8px" : "9px") // Smaller font for many items
-    .style("font-weight", "normal")
-    .style("fill", "white")
-    .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
-    .text(d => {
-      const percentage = (d.data / total * 100);
-      const threshold = 3;
-      if (percentage >= threshold || percentage > 15) {
-        // Show abbreviated values for small slices
-        const value = d.data;
-        if (value >= 1000000) {
-          return `$${(value / 1000000).toFixed(1)}M`;
-        } else if (value >= 1000) {
-          return `$${(value / 1000).toFixed(0)}k`;
-        } else {
-          return `$${value.toLocaleString()}`;
-        }
-      }
-      return "";
-    });
-
-  // Add labels and leader lines for smaller slices
+  // Add labels and leader lines for ALL slices (external labels)
   const labelLines = slices.append("polyline")
     .attr("stroke", "#666")
     .attr("stroke-width", 1)
     .attr("fill", "none")
     .attr("points", d => {
-      const percentage = (d.data / total * 100);
-      const threshold = 3; // Lower threshold
-      if (percentage < threshold && percentage <= 15) { // Only show leader lines for small slices below threshold
-        const pos = outerArc.centroid(d);
-        const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
-        pos[0] = radius * 1.4 * (midAngle < Math.PI ? 1 : -1);
-        return [arc.centroid(d), outerArc.centroid(d), pos];
-      }
-      return null;
+      // Show leader lines for ALL slices
+      const pos = outerArc.centroid(d);
+      const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+      pos[0] = radius * 1.4 * (midAngle < Math.PI ? 1 : -1);
+      return [arc.centroid(d), outerArc.centroid(d), pos];
     });
 
-  // Add external labels for smaller slices
+  // Add external labels for ALL slices
   slices.append("text")
     .attr("transform", d => {
-      const percentage = (d.data / total * 100);
-      const threshold = 3; // Lower threshold
-      if (percentage < threshold && percentage <= 15) { // External labels for small slices below threshold
-        const pos = outerArc.centroid(d);
-        const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
-        pos[0] = radius * 1.5 * (midAngle < Math.PI ? 1 : -1);
-        return `translate(${pos})`;
-      }
-      return null;
+      // External labels for ALL slices
+      const pos = outerArc.centroid(d);
+      const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+      pos[0] = radius * 1.5 * (midAngle < Math.PI ? 1 : -1);
+      return `translate(${pos})`;
     })
     .style("text-anchor", d => {
-      const percentage = (d.data / total * 100);
-      const threshold = 3;
-      if (percentage < threshold && percentage <= 15) {
-        const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
-        return midAngle < Math.PI ? "start" : "end";
-      }
-      return "middle";
+      // Position text based on which side of the chart
+      const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+      return midAngle < Math.PI ? "start" : "end";
     })
-    .style("font-size", numItems > 12 ? "8px" : "10px") // Smaller font for many items
+    .style("font-size", numItems > 12 ? "9px" : "11px") // Adjust font size based on number of items
     .style("font-weight", "bold")
     .style("fill", "#333")
     .text((d, i) => {
+      // Show label for ALL slices with percentage and value
       const percentage = (d.data / total * 100);
-      const threshold = 3;
-      if (percentage < threshold && percentage <= 15) {
-        const value = d.data;
-        let valueStr;
-        if (value >= 1000000) {
-          valueStr = `$${(value / 1000000).toFixed(1)}M`;
-        } else if (value >= 1000) {
-          valueStr = `$${(value / 1000).toFixed(0)}k`;
-        } else {
-          valueStr = `$${value.toLocaleString()}`;
-        }
-        
-        // Truncate label name if too long
-        const maxLabelLength = numItems > 12 ? 12 : 15;
-        const labelName = labels[i].length > maxLabelLength ? 
-          labels[i].substring(0, maxLabelLength - 2) + "..." : 
-          labels[i];
-        
-        return `${labelName} (${percentage.toFixed(1)}%, ${valueStr})`;
+      const value = d.data;
+      let valueStr;
+      if (value >= 1000000) {
+        valueStr = `$${(value / 1000000).toFixed(1)}M`;
+      } else if (value >= 1000) {
+        valueStr = `$${(value / 1000).toFixed(0)}k`;
+      } else {
+        valueStr = `$${value.toLocaleString()}`;
       }
-      return "";
+      
+      // Truncate label name if too long based on number of items
+      const maxLabelLength = numItems > 12 ? 10 : 15;
+      const labelName = labels[i].length > maxLabelLength ? 
+        labels[i].substring(0, maxLabelLength - 2) + "..." : 
+        labels[i];
+      
+      return `${labelName} (${percentage.toFixed(1)}%, ${valueStr})`;
     });
 
   // Add legend at the bottom of the container
