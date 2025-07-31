@@ -15,6 +15,48 @@ import autoTable from "jspdf-autotable";
 const API_URL = process.env.REACT_APP_API_URL || "";
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
+// Utility function to convert SVG to PNG data URL
+const svgToPngDataUrl = async (svgElement) => {
+  try {
+    // Create a canvas element
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Get SVG dimensions
+    const svgRect = svgElement.getBoundingClientRect();
+    const svgWidth = svgRect.width || 400;
+    const svgHeight = svgRect.height || 300;
+    
+    // Set canvas dimensions
+    canvas.width = svgWidth;
+    canvas.height = svgHeight;
+    
+    // Get SVG as string
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    
+    // Create Canvg instance and render
+    const v = Canvg.fromString(ctx, svgData);
+    await v.render();
+    
+    // Convert canvas to PNG data URL
+    return canvas.toDataURL('image/png');
+  } catch (error) {
+    console.error('Error converting SVG to PNG:', error);
+    // Fallback: create a simple placeholder image
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 300;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#f8f9fa';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#333';
+    ctx.font = '16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Chart Export Error', canvas.width / 2, canvas.height / 2);
+    return canvas.toDataURL('image/png');
+  }
+};
+
 // --- Example: add more dashboards here as components if you want ---
 function SalesDashboard(props) {
   return <Dashboard {...props} />;
@@ -94,17 +136,19 @@ function drawPieChart(container, { labels, values, colors }) {
   
   // Dynamically adjust layout based on number of items and container size
   const numItems = labels.length;
-  const legendColumns = numItems > 8 ? 4 : 3; // More columns for many items
+  const legendColumns = numItems > 8 ? 4 : 3;
   const legendRows = Math.ceil(numItems / legendColumns);
-  const legendItemHeight = numItems > 12 ? 16 : 20; // Smaller rows for many items
+  const legendItemHeight = numItems > 12 ? 16 : 20;
   const legendHeight = legendRows * legendItemHeight + 15;
   
-  // Reserve more space for legend when there are many items
-  const chartHeight = height - legendHeight - (numItems > 8 ? 40 : 30);
+  // Reserve space for external labels - need more horizontal margin
+  const labelMargin = 80; // Space for external labels on both sides
+  const chartHeight = height - legendHeight - 40;
+  const chartWidth = width - (labelMargin * 2); // Reduce effective width for labels
   
-  // Increase radius to make chart larger and more visible
-  const maxRadius = Math.min(width * 0.4, chartHeight * 0.45); // Larger radius
-  const radius = numItems > 12 ? maxRadius * 0.9 : maxRadius; // Less reduction for many items
+  // Calculate radius to fit within boundaries including label space
+  const maxRadius = Math.min(chartWidth * 0.25, chartHeight * 0.35); // Reduced to leave space for labels
+  const radius = numItems > 12 ? maxRadius * 0.9 : maxRadius;
   
   console.log('Chart dimensions:', { chartHeight, radius }); // Debug log
   
@@ -131,8 +175,8 @@ function drawPieChart(container, { labels, values, colors }) {
     .outerRadius(radius);
     
   const outerArc = d3.arc()
-    .innerRadius(radius * 1.3)
-    .outerRadius(radius * 1.3);
+    .innerRadius(radius * 1.1) // Reduced from 1.3 to fit better
+    .outerRadius(radius * 1.1);
   
   const slices = g.selectAll(".slice")
     .data(pie(values))
@@ -149,26 +193,38 @@ function drawPieChart(container, { labels, values, colors }) {
 
   // No internal labels - all labels will be external for better visibility
 
-  // Add labels and leader lines for ALL slices (external labels)
+  // Add labels and leader lines for ALL slices (external labels within boundaries)
   const labelLines = slices.append("polyline")
     .attr("stroke", "#666")
     .attr("stroke-width", 1)
     .attr("fill", "none")
     .attr("points", d => {
-      // Show leader lines for ALL slices
+      // Calculate label position within chart boundaries
       const pos = outerArc.centroid(d);
       const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
-      pos[0] = radius * 1.4 * (midAngle < Math.PI ? 1 : -1);
-      return [arc.centroid(d), outerArc.centroid(d), pos];
+      const labelDistance = radius * 1.3;
+      let labelX = labelDistance * (midAngle < Math.PI ? 1 : -1);
+      
+      // Ensure leader line endpoints stay within boundaries
+      const maxLabelX = (width / 2) - 10;
+      labelX = Math.max(-maxLabelX, Math.min(maxLabelX, labelX));
+      
+      return [arc.centroid(d), outerArc.centroid(d), [labelX, pos[1]]];
     });
 
-  // Add external labels for ALL slices
+  // Add external labels for ALL slices - positioned within chart boundaries
   slices.append("text")
     .attr("transform", d => {
-      // External labels for ALL slices
+      // Position labels within available space
       const pos = outerArc.centroid(d);
       const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
-      pos[0] = radius * 1.5 * (midAngle < Math.PI ? 1 : -1);
+      const labelDistance = radius * 1.3; // Reduced from 1.5 to ensure labels stay within bounds
+      pos[0] = labelDistance * (midAngle < Math.PI ? 1 : -1);
+      
+      // Ensure labels don't exceed chart boundaries
+      const maxLabelX = (width / 2) - 10; // Leave 10px margin from edge
+      pos[0] = Math.max(-maxLabelX, Math.min(maxLabelX, pos[0]));
+      
       return `translate(${pos})`;
     })
     .style("text-anchor", d => {
@@ -176,11 +232,11 @@ function drawPieChart(container, { labels, values, colors }) {
       const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
       return midAngle < Math.PI ? "start" : "end";
     })
-    .style("font-size", numItems > 12 ? "9px" : "11px") // Adjust font size based on number of items
+    .style("font-size", numItems > 12 ? "8px" : numItems > 8 ? "9px" : "10px") // Smaller fonts for better boundary fit
     .style("font-weight", "bold")
     .style("fill", "#333")
     .text((d, i) => {
-      // Show label for ALL slices with percentage and value
+      // Show label for ALL slices with percentage and value - more compact for boundary fit
       const percentage = (d.data / total * 100);
       const value = d.data;
       let valueStr;
@@ -192,12 +248,13 @@ function drawPieChart(container, { labels, values, colors }) {
         valueStr = `$${value.toLocaleString()}`;
       }
       
-      // Truncate label name if too long based on number of items
-      const maxLabelLength = numItems > 12 ? 10 : 15;
+      // More aggressive truncation to fit within chart boundaries
+      const maxLabelLength = numItems > 12 ? 6 : numItems > 8 ? 8 : 12; // Shorter labels for more items
       const labelName = labels[i].length > maxLabelLength ? 
         labels[i].substring(0, maxLabelLength - 2) + "..." : 
         labels[i];
       
+      // Create compact label format
       return `${labelName} (${percentage.toFixed(1)}%, ${valueStr})`;
     });
 
@@ -321,22 +378,26 @@ function drawDoughnutChart(container, { labels, values, colors }) {
     .attr("stroke", "#fff")
     .attr("stroke-width", 2);
 
-  // Add percentage and units labels inside slices for larger slices
+  // Add percentage and category labels inside slices for larger slices
   slices.append("text")
     .attr("transform", d => `translate(${arc.centroid(d)})`)
     .attr("text-anchor", "middle")
     .attr("dominant-baseline", "middle")
-    .style("font-size", "10px")
+    .style("font-size", "9px")
     .style("font-weight", "bold")
     .style("fill", "white")
     .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
-    .text(d => {
+    .text((d, i) => {
       const percentage = (d.data / total * 100);
-      // Only show percentage inside if slice is large enough (> 8% for doughnut)
-      return percentage > 8 ? `${percentage.toFixed(1)}%` : "";
+      // Show category name and percentage inside if slice is large enough (> 8% for doughnut)
+      if (percentage > 8) {
+        const categoryName = labels[i].length > 8 ? labels[i].substring(0, 6) + "..." : labels[i];
+        return `${categoryName}`;
+      }
+      return "";
     });
 
-  // Add units sold inside slices for larger slices (second line)
+  // Add percentage on second line for larger slices
   slices.append("text")
     .attr("transform", d => `translate(${arc.centroid(d)[0]}, ${arc.centroid(d)[1] + 11})`)
     .attr("text-anchor", "middle")
@@ -347,8 +408,8 @@ function drawDoughnutChart(container, { labels, values, colors }) {
     .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
     .text(d => {
       const percentage = (d.data / total * 100);
-      // Only show units inside if slice is large enough (> 8% for doughnut)
-      return percentage > 8 ? `${d.data.toLocaleString()} units` : "";
+      // Show percentage and units inside if slice is large enough
+      return percentage > 8 ? `${percentage.toFixed(1)}% (${d.data.toLocaleString()})` : "";
     });
 
   // Add total value in center of doughnut
@@ -385,7 +446,7 @@ function drawDoughnutChart(container, { labels, values, colors }) {
       return null;
     });
 
-  // Add external labels for small slices
+  // Add external labels for small slices - ensure category names are shown
   slices.append("text")
     .attr("transform", d => {
       const percentage = (d.data / total * 100);
@@ -404,14 +465,15 @@ function drawDoughnutChart(container, { labels, values, colors }) {
       }
       return "middle";
     })
-    .style("font-size", "10px")
+    .style("font-size", "9px")
     .style("font-weight", "bold")
     .style("fill", "#333")
     .text((d, i) => {
       const percentage = (d.data / total * 100);
       if (percentage <= 8) {
         const units = d.data.toLocaleString();
-        return `${labels[i]} (${percentage.toFixed(1)}%, ${units} units)`;
+        const categoryName = labels[i].length > 10 ? labels[i].substring(0, 8) + "..." : labels[i];
+        return `${categoryName} (${percentage.toFixed(1)}%, ${units})`;
       }
       return "";
     });
