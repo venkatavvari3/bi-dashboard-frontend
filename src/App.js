@@ -1502,6 +1502,7 @@ function PPDashboard({ token, persona, loginName }) {
     pieChart: true,
     doughnutChart: true,
     treemapChart: true,
+    histogramChart: true,
     dataTable: true
   });
 
@@ -1521,6 +1522,7 @@ function PPDashboard({ token, persona, loginName }) {
       pieChart: selectAll,
       doughnutChart: selectAll,
       treemapChart: selectAll,
+      histogramChart: selectAll,
       dataTable: selectAll
     });
   };
@@ -1562,6 +1564,7 @@ function PPDashboard({ token, persona, loginName }) {
         pieChart: true,
         doughnutChart: true,
         treemapChart: true,
+        histogramChart: true,
         dataTable: true
       });
     }
@@ -1745,6 +1748,23 @@ function PPDashboard({ token, persona, loginName }) {
   },
   [data, selectedProduct, selectedStore, chartRenderKey]
 );
+
+  const histogramRef = useD3Chart(
+    drawHistogram,
+    {
+      data: data
+        .filter(row =>
+          (selectedProduct ? row.product_id === selectedProduct : true) &&
+          (selectedStore ? row.store_name === selectedStore : true)
+        )
+        .map(row => Number(row.revenue)),
+      bins: 15,
+      xLabel: "Revenue",
+      yLabel: "Frequency"
+    },
+    [data, selectedProduct, selectedStore, chartRenderKey]
+  );
+
   const tableRef = useRef();
 
   // Fetch products and stores
@@ -2180,6 +2200,15 @@ function PPDashboard({ token, persona, loginName }) {
                 <Col md={2} sm={4} xs={6} className="mb-2">
                   <Form.Check
                     type="checkbox"
+                    id="histogramChart-pp"
+                    label="Revenue Distribution"
+                    checked={selectedCharts.histogramChart}
+                    onChange={() => handleChartSelection('histogramChart')}
+                  />
+                </Col>
+                <Col md={2} sm={4} xs={6} className="mb-2">
+                  <Form.Check
+                    type="checkbox"
                     id="dataTable-pp"
                     label="Data Table"
                     checked={selectedCharts.dataTable}
@@ -2248,6 +2277,20 @@ function PPDashboard({ token, persona, loginName }) {
           </Col>
         )}
       </Row>
+
+      <Row>
+        {selectedCharts.histogramChart && (
+          <Col lg={6} md={12} className="mb-4">
+            <Card>
+              <Card.Body className="chart-container p-0">
+                <div ref={histogramRef} style={{ width: "99%", height: "99%" }}></div>
+              </Card.Body>
+              <Card.Footer className="text-center small">Revenue Distribution</Card.Footer>
+            </Card>
+          </Col>
+        )}
+      </Row>
+
       {selectedCharts.dataTable && (
         <div ref={tableRef} className="mt-4">
           <div className="table-responsive">
