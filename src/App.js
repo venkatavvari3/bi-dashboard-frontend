@@ -302,6 +302,7 @@ function Dashboard({ token, persona, loginName }) {
     pieChart: true,
     doughnutChart: true,
     treemapChart: true,
+    histogramChart: true,
     dataTable: true
   });
 
@@ -379,6 +380,7 @@ function Dashboard({ token, persona, loginName }) {
       pieChart: selectAll,
       doughnutChart: selectAll,
       treemapChart: selectAll,
+      histogramChart: selectAll,
       dataTable: selectAll
     });
     // Re-rendering is handled by useEffect when selectedCharts changes
@@ -404,6 +406,7 @@ const handleApplyBookmark = (name) => {
       pieChart: true,
       doughnutChart: true,
       treemapChart: true,
+      histogramChart: true,
       dataTable: true
     });
   }
@@ -563,6 +566,22 @@ const treemapRef = useD3Chart(
           .reduce((a, b) => a + Number(b.revenue), 0)
       }))
     }))
+  },
+  [data, selectedProduct, selectedStore, chartRenderKey]
+);
+
+const histogramRef = useD3Chart(
+  drawHistogram,
+  {
+    data: data
+      .filter(row =>
+        (selectedProduct ? row.product_name === selectedProduct : true) &&
+        (selectedStore ? row.store_name === selectedStore : true)
+      )
+      .map(row => Number(row.revenue)),
+    bins: 15,
+    xLabel: "Revenue",
+    yLabel: "Frequency"
   },
   [data, selectedProduct, selectedStore, chartRenderKey]
 );
@@ -1027,6 +1046,15 @@ if (loading) return <Spinner animation="border" />;
           <Col md={2} sm={4} xs={6} className="mb-2">
             <Form.Check
               type="checkbox"
+              id="histogramChart"
+              label="Revenue Histogram"
+              checked={selectedCharts.histogramChart}
+              onChange={() => handleChartSelection('histogramChart')}
+            />
+          </Col>
+          <Col md={2} sm={4} xs={6} className="mb-2">
+            <Form.Check
+              type="checkbox"
               id="dataTable"
               label="Data Table"
               checked={selectedCharts.dataTable}
@@ -1091,6 +1119,19 @@ if (loading) return <Spinner animation="border" />;
             <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
           </Card.Body>
           <Card.Footer className="text-center small">Revenue Treemap</Card.Footer>
+        </Card>
+      </Col>
+    </Row>
+)}
+
+{selectedCharts.histogramChart && (
+  <Row>
+      <Col lg={6} md={12} className="mb-4">
+        <Card>
+          <Card.Body className="chart-container p-0">
+            <div ref={histogramRef} style={{ width: "99%", height: "99%" }}></div>
+          </Card.Body>
+          <Card.Footer className="text-center small">Revenue Distribution</Card.Footer>
         </Card>
       </Col>
     </Row>
@@ -2120,4 +2161,84 @@ export default function App() {
       )}
     </GoogleOAuthProvider>
   );
+}
+
+// Histogram chart drawing function
+function drawHistogram(container, { data, bins = 10, xLabel = "Value", yLabel = "Frequency" }) {
+  const width = (container.offsetWidth || 320) * 0.99;
+  const height = (container.offsetHeight || 200) * 0.99;
+  const margin = { top: 24, right: 16, bottom: 44, left: 48 };
+  
+  d3.select(container).selectAll("*").remove();
+  
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("width", "99%")
+    .attr("height", "99%")
+    .attr("viewBox", `0 0 ${width} ${height}`)
+    .attr("preserveAspectRatio", "xMinYMin meet")
+    .style("display", "block")
+    .style("margin", "0 auto");
+
+  // Create histogram data
+  const x = d3.scaleLinear()
+    .domain(d3.extent(data))
+    .range([margin.left, width - margin.right]);
+
+  const histogram = d3.histogram()
+    .value(d => d)
+    .domain(x.domain())
+    .thresholds(bins);
+
+  const binData = histogram(data);
+
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(binData, d => d.length)])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
+
+  const g = svg.append("g");
+
+  // Add x-axis
+  g.append("g")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(d3.axisBottom(x))
+    .selectAll("text")
+    .style("font-size", "11px");
+
+  // Add y-axis
+  g.append("g")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y))
+    .selectAll("text")
+    .style("font-size", "11px");
+
+  // Add bars
+  g.selectAll(".bar")
+    .data(binData)
+    .enter()
+    .append("rect")
+    .attr("class", "bar")
+    .attr("x", d => x(d.x0))
+    .attr("width", d => Math.max(0, x(d.x1) - x(d.x0) - 1))
+    .attr("y", d => y(d.length))
+    .attr("height", d => y(0) - y(d.length))
+    .attr("fill", "#ff6384")
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1);
+
+  // Add axis labels
+  g.append("text")
+    .attr("transform", `translate(${(margin.left + width - margin.right) / 2}, ${height - 5})`)
+    .style("text-anchor", "middle")
+    .style("font-size", "12px")
+    .text(xLabel);
+
+  g.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("y", 15)
+    .attr("x", 0 - (height / 2))
+    .style("text-anchor", "middle")
+    .style("font-size", "12px")
+    .text(yLabel);
 }
