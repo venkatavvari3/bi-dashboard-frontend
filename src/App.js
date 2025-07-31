@@ -1360,74 +1360,83 @@ if (loading) return <Spinner animation="border" />;
   </Col>
 </Row>
 
-{/* All graphs in responsive grid */}
-<Row>
-    {selectedCharts.lineChart && (
-      <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
-        <Card>
-          <Card.Body className="chart-container p-0">
-            <div ref={lineRef} style={{ width: "99%", height: "99%" }}></div>
-          </Card.Body>
-          <Card.Footer className="text-center small">Total Revenue Over Time</Card.Footer>
-        </Card>
-      </Col>
-    )}
-    {selectedCharts.barChart && (
-      <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
-        <Card>
-          <Card.Body className="chart-container p-0">
-            <div ref={barRef} style={{ width: "99%", height: "99%" }}></div>
-          </Card.Body>
-          <Card.Footer className="text-center small">Revenue by Product</Card.Footer>
-        </Card>
-      </Col>
-    )}
-    {selectedCharts.pieChart && (
-      <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
-        <Card>
-          <Card.Body className="chart-container p-0">
-            <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
-          </Card.Body>
-          <Card.Footer className="text-center small">Revenue by Store</Card.Footer>
-        </Card>
-      </Col>
-    )}
-    {selectedCharts.doughnutChart && (
-      <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
-        <Card>
-          <Card.Body className="chart-container p-0">
-            <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
-          </Card.Body>
-          <Card.Footer className="text-center small">Units Sold by Category</Card.Footer>
-        </Card>
-      </Col>
-    )}
+{/* All graphs in individual rows for better visibility */}
+{selectedCharts.lineChart && (
+  <Row>
+    <Col lg={8} md={10} sm={12} className="mb-4">
+      <Card>
+        <Card.Body className="chart-container p-0" style={{ height: "350px" }}>
+          <div ref={lineRef} style={{ width: "99%", height: "99%" }}></div>
+        </Card.Body>
+        <Card.Footer className="text-center small">Total Revenue Over Time</Card.Footer>
+      </Card>
+    </Col>
   </Row>
+)}
+
+{selectedCharts.barChart && (
+  <Row>
+    <Col lg={8} md={10} sm={12} className="mb-4">
+      <Card>
+        <Card.Body className="chart-container p-0" style={{ height: "350px" }}>
+          <div ref={barRef} style={{ width: "99%", height: "99%" }}></div>
+        </Card.Body>
+        <Card.Footer className="text-center small">Revenue by Product</Card.Footer>
+      </Card>
+    </Col>
+  </Row>
+)}
+
+{selectedCharts.pieChart && (
+  <Row>
+    <Col lg={6} md={8} sm={12} className="mb-4">
+      <Card>
+        <Card.Body className="chart-container p-0" style={{ height: "400px" }}>
+          <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
+        </Card.Body>
+        <Card.Footer className="text-center small">Revenue by Store</Card.Footer>
+      </Card>
+    </Col>
+  </Row>
+)}
+
+{selectedCharts.doughnutChart && (
+  <Row>
+    <Col lg={6} md={8} sm={12} className="mb-4">
+      <Card>
+        <Card.Body className="chart-container p-0" style={{ height: "400px" }}>
+          <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
+        </Card.Body>
+        <Card.Footer className="text-center small">Units Sold by Category</Card.Footer>
+      </Card>
+    </Col>
+  </Row>
+)}
 
 {selectedCharts.treemapChart && (
   <Row>
-      <Col lg={8} md={12} className="mb-4">
-        <Card>
-          <Card.Body className="chart-container p-0" style={{ height: "400px" }}>
-            <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
-          </Card.Body>
-          <Card.Footer className="text-center small">Revenue Treemap</Card.Footer>
-        </Card>
-      </Col>
-    </Row>
+    <Col lg={10} md={12} className="mb-4">
+      <Card>
+        <Card.Body className="chart-container p-0" style={{ height: "450px" }}>
+          <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
+        </Card.Body>
+        <Card.Footer className="text-center small">Revenue Treemap</Card.Footer>
+      </Card>
+    </Col>
+  </Row>
 )}
 
 {selectedCharts.histogramChart && (
   <Row>
-      <Col lg={6} md={12} className="mb-4">
-        <Card>
-          <Card.Body className="chart-container p-0">
-            <div ref={histogramRef} style={{ width: "99%", height: "99%" }}></div>
-          </Card.Body>
-          <Card.Footer className="text-center small">Revenue Distribution</Card.Footer>
-        </Card>
-      </Col>
-    </Row>
+    <Col lg={8} md={10} sm={12} className="mb-4">
+      <Card>
+        <Card.Body className="chart-container p-0" style={{ height: "350px" }}>
+          <div ref={histogramRef} style={{ width: "99%", height: "99%" }}></div>
+        </Card.Body>
+        <Card.Footer className="text-center small">Revenue Distribution</Card.Footer>
+      </Card>
+    </Col>
+  </Row>
 )}
 
 {selectedCharts.dataTable && (
@@ -2221,75 +2230,84 @@ function PPDashboard({ token, persona, loginName }) {
         </Col>
       </Row>
 
-      {/* All graphs in responsive grid */}
-      <Row>
-        {selectedCharts.lineChart && (
-          <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
+      {/* All graphs in individual rows for better visibility */}
+      {selectedCharts.lineChart && (
+        <Row>
+          <Col lg={8} md={10} sm={12} className="mb-4">
             <Card>
-              <Card.Body className="chart-container p-0">
+              <Card.Body className="chart-container p-0" style={{ height: "350px" }}>
                 <div ref={lineRef} style={{ width: "99%", height: "99%" }}></div>
               </Card.Body>
               <Card.Footer className="text-center small">Total Revenue Over Time</Card.Footer>
             </Card>
           </Col>
-        )}
-        {selectedCharts.barChart && (
-          <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
+        </Row>
+      )}
+
+      {selectedCharts.barChart && (
+        <Row>
+          <Col lg={8} md={10} sm={12} className="mb-4">
             <Card>
-              <Card.Body className="chart-container p-0">
+              <Card.Body className="chart-container p-0" style={{ height: "350px" }}>
                 <div ref={barRef} style={{ width: "99%", height: "99%" }}></div>
               </Card.Body>
               <Card.Footer className="text-center small">Revenue by Product</Card.Footer>
             </Card>
           </Col>
-        )}
-        {selectedCharts.pieChart && (
-          <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
+        </Row>
+      )}
+
+      {selectedCharts.pieChart && (
+        <Row>
+          <Col lg={6} md={8} sm={12} className="mb-4">
             <Card>
-              <Card.Body className="chart-container p-0">
+              <Card.Body className="chart-container p-0" style={{ height: "400px" }}>
                 <div ref={pieRef} style={{ width: "99%", height: "99%" }}></div>
               </Card.Body>
               <Card.Footer className="text-center small">Revenue by Store</Card.Footer>
             </Card>
           </Col>
-        )}
-        {selectedCharts.doughnutChart && (
-          <Col xl={3} lg={6} md={6} sm={12} className="mb-4">
+        </Row>
+      )}
+
+      {selectedCharts.doughnutChart && (
+        <Row>
+          <Col lg={6} md={8} sm={12} className="mb-4">
             <Card>
-              <Card.Body className="chart-container p-0">
+              <Card.Body className="chart-container p-0" style={{ height: "400px" }}>
                 <div ref={doughnutRef} style={{ width: "99%", height: "99%" }}></div>
               </Card.Body>
               <Card.Footer className="text-center small">Units Sold by Category</Card.Footer>
             </Card>
           </Col>
-        )}
-      </Row>
+        </Row>
+      )}
 
-      <Row>
-        {selectedCharts.treemapChart && (
-          <Col lg={8} md={12} className="mb-4">
+      {selectedCharts.treemapChart && (
+        <Row>
+          <Col lg={10} md={12} className="mb-4">
             <Card>
-              <Card.Body className="chart-container p-0" style={{ height: "400px" }}>
+              <Card.Body className="chart-container p-0" style={{ height: "450px" }}>
                 <div ref={treemapRef} style={{ width: "99%", height: "99%" }}></div>
               </Card.Body>
               <Card.Footer className="text-center small">Revenue Treemap</Card.Footer>
             </Card>
           </Col>
-        )}
-      </Row>
+        </Row>
+      )}
 
-      <Row>
-        {selectedCharts.histogramChart && (
-          <Col lg={6} md={12} className="mb-4">
+      {selectedCharts.histogramChart && (
+        <Row>
+          <Col lg={8} md={10} sm={12} className="mb-4">
             <Card>
-              <Card.Body className="chart-container p-0">
+              <Card.Body className="chart-container p-0" style={{ height: "350px" }}>
                 <div ref={histogramRef} style={{ width: "99%", height: "99%" }}></div>
               </Card.Body>
               <Card.Footer className="text-center small">Revenue Distribution</Card.Footer>
             </Card>
           </Col>
-        )}
-      </Row>
+        </Row>
+      )}
 
       {selectedCharts.dataTable && (
         <div ref={tableRef} className="mt-4">
