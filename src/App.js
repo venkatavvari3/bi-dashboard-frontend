@@ -87,7 +87,10 @@ function drawBarChart(container, { labels, values }) {
 function drawPieChart(container, { labels, values, colors }) {
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
-  const radius = Math.min(width, height) / 2 - 10;
+  const legendRows = Math.ceil(labels.length / 3);
+  const legendHeight = legendRows * 20 + 10; // Dynamic height: 20px per row + padding
+  const chartHeight = height - legendHeight - 30; // Reserve space for legend plus extra margin
+  const radius = Math.min(width * 0.8, chartHeight * 0.8) / 2; // Constrain radius more conservatively
   d3.select(container).selectAll("*").remove();
   const svg = d3.select(container)
     .append("svg")
@@ -97,26 +100,128 @@ function drawPieChart(container, { labels, values, colors }) {
     .attr("preserveAspectRatio", "xMidYMid meet")
     .style("display", "block");
   const g = svg.append("g")
-    .attr("transform", `translate(${width / 2},${height / 2})`);
+    .attr("transform", `translate(${width / 2},${chartHeight / 2 + 15})`); // Center in available chart space
 
-  const pie = d3.pie()(values);
-  const arc = d3.arc().innerRadius(0).outerRadius(radius);
-  g.selectAll("path")
-    .data(pie)
+  // Calculate total for percentage calculations
+  const total = values.reduce((sum, value) => sum + value, 0);
+  
+  const pie = d3.pie()
+    .value(d => d)
+    .sort(null); // Maintain original order
+    
+  const arc = d3.arc()
+    .innerRadius(0)
+    .outerRadius(radius);
+    
+  const outerArc = d3.arc()
+    .innerRadius(radius * 1.1)
+    .outerRadius(radius * 1.1);
+  
+  const slices = g.selectAll(".slice")
+    .data(pie(values))
     .enter()
-    .append("path")
+    .append("g")
+    .attr("class", "slice");
+
+  // Create pie slices
+  slices.append("path")
     .attr("d", arc)
     .attr("fill", (_, i) => colors[i % colors.length])
     .attr("stroke", "#fff")
-    .attr("stroke-width", 1);
-  g.selectAll("text")
-    .data(pie)
-    .enter()
-    .append("text")
-    .text((d, i) => labels[i])
+    .attr("stroke-width", 2);
+
+  // Add percentage labels inside slices for larger slices
+  slices.append("text")
     .attr("transform", d => `translate(${arc.centroid(d)})`)
     .attr("text-anchor", "middle")
-    .attr("font-size", Math.max(Math.min(width, height) / 24, 10));
+    .attr("dominant-baseline", "middle")
+    .style("font-size", "12px")
+    .style("font-weight", "bold")
+    .style("fill", "white")
+    .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
+    .text(d => {
+      const percentage = (d.data / total * 100);
+      // Only show percentage inside if slice is large enough (> 5%)
+      return percentage > 5 ? `${percentage.toFixed(1)}%` : "";
+    });
+
+  // Add labels and leader lines for all slices
+  const labelLines = slices.append("polyline")
+    .attr("stroke", "#666")
+    .attr("stroke-width", 1)
+    .attr("fill", "none")
+    .attr("points", d => {
+      const percentage = (d.data / total * 100);
+      if (percentage <= 5) { // Only show leader lines for small slices
+        const pos = outerArc.centroid(d);
+        const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+        pos[0] = radius * 0.95 * (midAngle < Math.PI ? 1 : -1);
+        return [arc.centroid(d), outerArc.centroid(d), pos];
+      }
+      return null;
+    });
+
+  // Add external labels
+  slices.append("text")
+    .attr("transform", d => {
+      const percentage = (d.data / total * 100);
+      if (percentage <= 5) { // External labels for small slices
+        const pos = outerArc.centroid(d);
+        const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+        pos[0] = radius * 1.0 * (midAngle < Math.PI ? 1 : -1);
+        return `translate(${pos})`;
+      }
+      return null;
+    })
+    .style("text-anchor", d => {
+      if ((d.data / total * 100) <= 5) {
+        const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+        return midAngle < Math.PI ? "start" : "end";
+      }
+      return "middle";
+    })
+    .style("font-size", "10px")
+    .style("font-weight", "bold")
+    .style("fill", "#333")
+    .text((d, i) => {
+      const percentage = (d.data / total * 100);
+      if (percentage <= 5) {
+        return `${labels[i]} (${percentage.toFixed(1)}%)`;
+      }
+      return "";
+    });
+
+  // Add legend at the bottom of the container
+  const legendY = height - legendHeight;
+  const legend = svg.append("g")
+    .attr("class", "legend")
+    .attr("transform", `translate(10, ${legendY})`);
+
+  const legendItems = legend.selectAll(".legend-item")
+    .data(labels)
+    .enter()
+    .append("g")
+    .attr("class", "legend-item")
+    .attr("transform", (d, i) => `translate(${(i % 3) * (width / 3 - 10)}, ${Math.floor(i / 3) * 20})`);
+
+  legendItems.append("rect")
+    .attr("width", 12)
+    .attr("height", 12)
+    .attr("fill", (d, i) => colors[i % colors.length]);
+
+  legendItems.append("text")
+    .attr("x", 16)
+    .attr("y", 6)
+    .attr("dy", "0.35em")
+    .style("font-size", "10px")
+    .style("fill", "#333")
+    .text((d, i) => {
+      const percentage = (values[i] / total * 100);
+      const labelText = `${d} (${percentage.toFixed(1)}%)`;
+      // Truncate long labels to fit in available space
+      const maxLength = Math.floor((width / 3 - 30) / 6); // Approximate character width
+      return labelText.length > maxLength ? labelText.substring(0, maxLength - 3) + "..." : labelText;
+    });
 }
 
 function drawLineChart(container, { labels, values }) {
@@ -159,7 +264,10 @@ function drawLineChart(container, { labels, values }) {
 function drawDoughnutChart(container, { labels, values, colors }) {
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
-  const radius = Math.min(width, height) / 2 - 10;
+  const legendRows = Math.ceil(labels.length / 3);
+  const legendHeight = legendRows * 20 + 10; // Dynamic height: 20px per row + padding
+  const chartHeight = height - legendHeight - 30; // Reserve space for legend plus extra margin
+  const radius = Math.min(width * 0.8, chartHeight * 0.8) / 2; // Constrain radius more conservatively
   d3.select(container).selectAll("*").remove();
   const svg = d3.select(container)
     .append("svg")
@@ -169,26 +277,146 @@ function drawDoughnutChart(container, { labels, values, colors }) {
     .attr("preserveAspectRatio", "xMidYMid meet")
     .style("display", "block");
   const g = svg.append("g")
-    .attr("transform", `translate(${width / 2},${height / 2})`);
+    .attr("transform", `translate(${width / 2},${chartHeight / 2 + 15})`); // Center in available chart space
 
-  const pie = d3.pie()(values);
-  const arc = d3.arc().innerRadius(radius * 0.5).outerRadius(radius);
-  g.selectAll("path")
-    .data(pie)
+  // Calculate total for percentage calculations
+  const total = values.reduce((sum, value) => sum + value, 0);
+
+  const pie = d3.pie()
+    .value(d => d)
+    .sort(null); // Maintain original order
+    
+  const arc = d3.arc()
+    .innerRadius(radius * 0.5)
+    .outerRadius(radius);
+    
+  const outerArc = d3.arc()
+    .innerRadius(radius * 1.1)
+    .outerRadius(radius * 1.1);
+  
+  const slices = g.selectAll(".slice")
+    .data(pie(values))
     .enter()
-    .append("path")
+    .append("g")
+    .attr("class", "slice");
+
+  // Create doughnut slices
+  slices.append("path")
     .attr("d", arc)
     .attr("fill", (_, i) => colors[i % colors.length])
     .attr("stroke", "#fff")
-    .attr("stroke-width", 1);
-  g.selectAll("text")
-    .data(pie)
-    .enter()
-    .append("text")
-    .text((d, i) => labels[i])
+    .attr("stroke-width", 2);
+
+  // Add percentage labels inside slices for larger slices
+  slices.append("text")
     .attr("transform", d => `translate(${arc.centroid(d)})`)
     .attr("text-anchor", "middle")
-    .attr("font-size", Math.max(Math.min(width, height) / 24, 10));
+    .attr("dominant-baseline", "middle")
+    .style("font-size", "11px")
+    .style("font-weight", "bold")
+    .style("fill", "white")
+    .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
+    .text(d => {
+      const percentage = (d.data / total * 100);
+      // Only show percentage inside if slice is large enough (> 8% for doughnut)
+      return percentage > 8 ? `${percentage.toFixed(1)}%` : "";
+    });
+
+  // Add total value in center of doughnut
+  g.append("text")
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .style("font-size", "14px")
+    .style("font-weight", "bold")
+    .style("fill", "#333")
+    .text("Total")
+    .attr("y", -8);
+
+  g.append("text")
+    .attr("text-anchor", "middle")
+    .attr("dominant-baseline", "middle")
+    .style("font-size", "12px")
+    .style("fill", "#666")
+    .text(total.toLocaleString())
+    .attr("y", 8);
+
+  // Add labels and leader lines for small slices
+  const labelLines = slices.append("polyline")
+    .attr("stroke", "#666")
+    .attr("stroke-width", 1)
+    .attr("fill", "none")
+    .attr("points", d => {
+      const percentage = (d.data / total * 100);
+      if (percentage <= 8) { // Only show leader lines for small slices
+        const pos = outerArc.centroid(d);
+        const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+        pos[0] = radius * 0.95 * (midAngle < Math.PI ? 1 : -1);
+        return [arc.centroid(d), outerArc.centroid(d), pos];
+      }
+      return null;
+    });
+
+  // Add external labels for small slices
+  slices.append("text")
+    .attr("transform", d => {
+      const percentage = (d.data / total * 100);
+      if (percentage <= 8) { // External labels for small slices
+        const pos = outerArc.centroid(d);
+        const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+        pos[0] = radius * 1.0 * (midAngle < Math.PI ? 1 : -1);
+        return `translate(${pos})`;
+      }
+      return null;
+    })
+    .style("text-anchor", d => {
+      if ((d.data / total * 100) <= 8) {
+        const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+        return midAngle < Math.PI ? "start" : "end";
+      }
+      return "middle";
+    })
+    .style("font-size", "10px")
+    .style("font-weight", "bold")
+    .style("fill", "#333")
+    .text((d, i) => {
+      const percentage = (d.data / total * 100);
+      if (percentage <= 8) {
+        return `${labels[i]} (${percentage.toFixed(1)}%)`;
+      }
+      return "";
+    });
+
+  // Add legend at the bottom of the container
+  const legendY = height - legendHeight;
+  const legend = svg.append("g")
+    .attr("class", "legend")
+    .attr("transform", `translate(10, ${legendY})`);
+
+  const legendItems = legend.selectAll(".legend-item")
+    .data(labels)
+    .enter()
+    .append("g")
+    .attr("class", "legend-item")
+    .attr("transform", (d, i) => `translate(${(i % 3) * (width / 3 - 10)}, ${Math.floor(i / 3) * 20})`);
+
+  legendItems.append("rect")
+    .attr("width", 12)
+    .attr("height", 12)
+    .attr("fill", (d, i) => colors[i % colors.length]);
+
+  legendItems.append("text")
+    .attr("x", 16)
+    .attr("y", 6)
+    .attr("dy", "0.35em")
+    .style("font-size", "10px")
+    .style("fill", "#333")
+    .text((d, i) => {
+      const percentage = (values[i] / total * 100);
+      const labelText = `${d} (${percentage.toFixed(1)}%)`;
+      // Truncate long labels to fit in available space
+      const maxLength = Math.floor((width / 3 - 30) / 6); // Approximate character width
+      return labelText.length > maxLength ? labelText.substring(0, maxLength - 3) + "..." : labelText;
+    });
 }
 
 
