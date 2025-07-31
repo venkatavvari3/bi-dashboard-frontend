@@ -152,9 +152,9 @@ function drawPieChart(container, { labels, values, colors }) {
     .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
     .text(d => {
       const percentage = (d.data / total * 100);
-      // Always show percentage for slices >= 4%, or adjust threshold based on number of items
-      const threshold = numItems > 12 ? 3 : 4; // Lower threshold to show more labels
-      if (percentage >= threshold) {
+      // Always show percentage for slices >= 3%, or any slice > 15% (top slices)
+      const threshold = 3;
+      if (percentage >= threshold || percentage > 15) {
         return `${percentage.toFixed(1)}%`;
       }
       return "";
@@ -171,8 +171,8 @@ function drawPieChart(container, { labels, values, colors }) {
     .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
     .text(d => {
       const percentage = (d.data / total * 100);
-      const threshold = numItems > 12 ? 3 : 4; // Lower threshold to show more labels
-      if (percentage >= threshold) {
+      const threshold = 3;
+      if (percentage >= threshold || percentage > 15) {
         // Show abbreviated values for small slices
         const value = d.data;
         if (value >= 1000000) {
@@ -193,8 +193,8 @@ function drawPieChart(container, { labels, values, colors }) {
     .attr("fill", "none")
     .attr("points", d => {
       const percentage = (d.data / total * 100);
-      const threshold = numItems > 12 ? 3 : 4; // Lower threshold
-      if (percentage < threshold) { // Only show leader lines for small slices below threshold
+      const threshold = 3; // Lower threshold
+      if (percentage < threshold && percentage <= 15) { // Only show leader lines for small slices below threshold
         const pos = outerArc.centroid(d);
         const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
         pos[0] = radius * 1.4 * (midAngle < Math.PI ? 1 : -1);
@@ -207,8 +207,8 @@ function drawPieChart(container, { labels, values, colors }) {
   slices.append("text")
     .attr("transform", d => {
       const percentage = (d.data / total * 100);
-      const threshold = numItems > 12 ? 3 : 4; // Lower threshold
-      if (percentage < threshold) { // External labels for small slices below threshold
+      const threshold = 3; // Lower threshold
+      if (percentage < threshold && percentage <= 15) { // External labels for small slices below threshold
         const pos = outerArc.centroid(d);
         const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
         pos[0] = radius * 1.5 * (midAngle < Math.PI ? 1 : -1);
@@ -218,8 +218,8 @@ function drawPieChart(container, { labels, values, colors }) {
     })
     .style("text-anchor", d => {
       const percentage = (d.data / total * 100);
-      const threshold = numItems > 12 ? 3 : 4;
-      if (percentage < threshold) {
+      const threshold = 3;
+      if (percentage < threshold && percentage <= 15) {
         const midAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
         return midAngle < Math.PI ? "start" : "end";
       }
@@ -230,8 +230,8 @@ function drawPieChart(container, { labels, values, colors }) {
     .style("fill", "#333")
     .text((d, i) => {
       const percentage = (d.data / total * 100);
-      const threshold = numItems > 12 ? 3 : 4;
-      if (percentage < threshold) {
+      const threshold = 3;
+      if (percentage < threshold && percentage <= 15) {
         const value = d.data;
         let valueStr;
         if (value >= 1000000) {
