@@ -18,30 +18,101 @@ const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 // Utility function to convert SVG to PNG data URL
 const svgToPngDataUrl = async (svgElement) => {
   try {
+    console.log('Converting SVG to PNG...', svgElement);
+    
     // Create a canvas element
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
-    // Get SVG dimensions
+    // Get SVG dimensions - try multiple methods
+    let svgWidth = 400;
+    let svgHeight = 300;
+    
+    // Method 1: Try getBoundingClientRect
     const svgRect = svgElement.getBoundingClientRect();
-    const svgWidth = svgRect.width || 400;
-    const svgHeight = svgRect.height || 300;
+    if (svgRect.width > 0 && svgRect.height > 0) {
+      svgWidth = svgRect.width;
+      svgHeight = svgRect.height;
+    } else {
+      // Method 2: Try getAttribute
+      const widthAttr = svgElement.getAttribute('width');
+      const heightAttr = svgElement.getAttribute('height');
+      if (widthAttr && heightAttr) {
+        svgWidth = parseFloat(widthAttr);
+        svgHeight = parseFloat(heightAttr);
+      } else {
+        // Method 3: Try viewBox
+        const viewBox = svgElement.getAttribute('viewBox');
+        if (viewBox) {
+          const [, , width, height] = viewBox.split(' ').map(Number);
+          if (width && height) {
+            svgWidth = width;
+            svgHeight = height;
+          }
+        }
+      }
+    }
     
-    // Set canvas dimensions
-    canvas.width = svgWidth;
-    canvas.height = svgHeight;
+    console.log('SVG dimensions:', svgWidth, 'x', svgHeight);
     
-    // Get SVG as string
-    const svgData = new XMLSerializer().serializeToString(svgElement);
+    // Set canvas dimensions with device pixel ratio for better quality
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    canvas.width = svgWidth * devicePixelRatio;
+    canvas.height = svgHeight * devicePixelRatio;
+    canvas.style.width = svgWidth + 'px';
+    canvas.style.height = svgHeight + 'px';
+    ctx.scale(devicePixelRatio, devicePixelRatio);
     
-    // Create Canvg instance and render
-    const v = Canvg.fromString(ctx, svgData);
-    await v.render();
+    // Get SVG as string and clean it up
+    let svgData = new XMLSerializer().serializeToString(svgElement);
+    
+    // Ensure SVG has proper namespace and dimensions
+    if (!svgData.includes('xmlns="http://www.w3.org/2000/svg"')) {
+      svgData = svgData.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
+    
+    // Set explicit width and height if not present
+    if (!svgData.includes('width=') || !svgData.includes('height=')) {
+      svgData = svgData.replace('<svg', `<svg width="${svgWidth}" height="${svgHeight}"`);
+    }
+    
+    console.log('SVG data length:', svgData.length);
+    
+    // Try using Canvg first
+    try {
+      const v = Canvg.fromString(ctx, svgData);
+      await v.render();
+      console.log('Canvg conversion successful');
+    } catch (canvgError) {
+      console.warn('Canvg failed, trying alternative method:', canvgError);
+      
+      // Alternative method: use img element with SVG data URL
+      const img = new Image();
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      
+      await new Promise((resolve, reject) => {
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+        img.onerror = reject;
+        img.src = url;
+      });
+      
+      console.log('Alternative conversion successful');
+    }
     
     // Convert canvas to PNG data URL
-    return canvas.toDataURL('image/png');
+    const dataUrl = canvas.toDataURL('image/png');
+    console.log('PNG conversion complete, data URL length:', dataUrl.length);
+    return dataUrl;
+    
   } catch (error) {
     console.error('Error converting SVG to PNG:', error);
+    console.error('SVG element:', svgElement);
+    
     // Fallback: create a simple placeholder image
     const canvas = document.createElement('canvas');
     canvas.width = 400;
@@ -335,8 +406,11 @@ function drawLineChart(container, { labels, values }) {
 function drawDoughnutChart(container, { labels, values, colors }) {
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
-  const legendRows = Math.ceil(labels.length / 3); // Back to 3 columns for shorter text
-  const legendHeight = legendRows * 20 + 10; // Standard height per row and padding
+  const numItems = labels.length;
+  const legendColumns = numItems > 8 ? 4 : 3;
+  const legendRows = Math.ceil(numItems / legendColumns);
+  const legendItemHeight = 20;
+  const legendHeight = legendRows * legendItemHeight + 10;
   const chartHeight = height - legendHeight - 30; // Reserve space for legend plus extra margin
   const radius = Math.min(width * 0.8, chartHeight * 0.8) / 2; // Constrain radius more conservatively
   d3.select(container).selectAll("*").remove();
@@ -489,266 +563,33 @@ function drawDoughnutChart(container, { labels, values, colors }) {
     .enter()
     .append("g")
     .attr("class", "legend-item")
-    .attr("transform", (d, i) => `translate(${(i % 3) * (width / 3 - 10)}, ${Math.floor(i / 3) * 20})`);
+    .attr("transform", (d, i) => {
+      const col = i % legendColumns;
+      const row = Math.floor(i / legendColumns);
+      const colWidth = (width - 20) / legendColumns;
+      return `translate(${col * colWidth}, ${row * legendItemHeight})`;
+    });
 
   legendItems.append("rect")
-    .attr("width", 12)
-    .attr("height", 12)
+    .attr("width", 10)
+    .attr("height", 10)
     .attr("fill", (d, i) => colors[i % colors.length]);
 
   legendItems.append("text")
-    .attr("x", 16)
-    .attr("y", 6)
+    .attr("x", 14)
+    .attr("y", 5)
     .attr("dy", "0.35em")
-    .style("font-size", "10px")
+    .style("font-size", numItems > 12 ? "8px" : "10px") // Smaller font for many items
     .style("fill", "#333")
     .text((d, i) => {
-      // Just show the label name, no percentage or units
-      const labelText = d;
-      // Truncate long labels to fit in available space
-      const maxLength = Math.floor((width / 3 - 30) / 6); // Approximate character width for 3 columns
-      return labelText.length > maxLength ? labelText.substring(0, maxLength - 3) + "..." : labelText;
+      // Just show the label name, truncated if necessary
+      const colWidth = (width - 20) / legendColumns;
+      const maxLength = Math.floor((colWidth - 20) / (numItems > 12 ? 5 : 6)); // Adjust for font size
+      return d.length > maxLength ? d.substring(0, maxLength - 2) + "..." : d;
     });
 }
 
-
-function drawBubbleChart(container, { data, labelKey = "product_name", colors = ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0", "#9966ff", "#ff9f40", "#c9cbcf", "#8e44ad", "#e74c3c", "#f39c12"] }) {
-  const width = (container.offsetWidth || 320) * 0.99;
-  const height = (container.offsetHeight || 200) * 0.99;
-  const margin = { top: 20, right: 20, bottom: 100, left: 20 }; // Optimized margins for maximum bubble space
-  
-  d3.select(container).selectAll("*").remove();
-  
-  // Aggregate data by product to get cumulative profit
-  const productData = {};
-  data.forEach(row => {
-    const productName = row[labelKey];
-    const profit = Number(row.profit) || 0;
-    const revenue = Number(row.revenue) || 0;
-    const unitsSold = Number(row.units_sold) || 0;
-    
-    if (!productData[productName]) {
-      productData[productName] = {
-        name: productName,
-        totalProfit: 0,
-        totalRevenue: 0,
-        totalUnitsSold: 0,
-        category: row.category || 'Unknown'
-      };
-    }
-    
-    productData[productName].totalProfit += profit;
-    productData[productName].totalRevenue += revenue;
-    productData[productName].totalUnitsSold += unitsSold;
-  });
-  
-  // Convert to array and sort by profit
-  const aggregatedData = Object.values(productData).sort((a, b) => b.totalProfit - a.totalProfit);
-  
-  console.log('Aggregated product data:', aggregatedData); // Debug log
-  
-  const svg = d3.select(container)
-    .append("svg")
-    .attr("width", "99%")
-    .attr("height", "99%")
-    .attr("viewBox", `0 0 ${width} ${height}`)
-    .attr("preserveAspectRatio", "xMinYMin meet")
-    .style("display", "block")
-    .style("margin", "0 auto");
-
-  const g = svg.append("g");
-
-  // Calculate chart area dimensions
-  const chartWidth = width - margin.left - margin.right;
-  const chartHeight = height - margin.top - margin.bottom;
-
-  // Create scales
-  const maxProfit = d3.max(aggregatedData, d => d.totalProfit) || 1;
-  const minProfit = d3.min(aggregatedData, d => d.totalProfit) || 0;
-  
-  // Scale for bubble size based on profit - maximized for available space
-  const sizeScale = d3.scaleLinear()
-    .domain([minProfit, maxProfit])
-    .range([25, Math.min(chartWidth, chartHeight) * 0.35]); // Increased further to 0.35 for even larger bubbles
-  
-  // Position bubbles in a packed circle layout within chart boundaries
-  const simulation = d3.forceSimulation(aggregatedData)
-    .force("charge", d3.forceManyBody().strength(-150)) // Increased repulsion for larger bubbles
-    .force("center", d3.forceCenter(width / 2, margin.top + chartHeight / 2))
-    .force("collision", d3.forceCollide().radius(d => sizeScale(d.totalProfit) + 5)) // Increased padding
-    .force("x", d3.forceX(width / 2).strength(0.2))
-    .force("y", d3.forceY(margin.top + chartHeight / 2).strength(0.2))
-    .stop();
-  
-  // Run simulation
-  for (let i = 0; i < 300; ++i) simulation.tick();
-
-  // Create tooltip
-  const tooltip = d3.select(container)
-    .append("div")
-    .style("position", "absolute")
-    .style("background", "rgba(0, 0, 0, 0.9)")
-    .style("color", "white")
-    .style("padding", "10px")
-    .style("border-radius", "6px")
-    .style("font-size", "12px")
-    .style("pointer-events", "none")
-    .style("opacity", 0)
-    .style("box-shadow", "0 4px 8px rgba(0,0,0,0.3)");
-
-  // Create color mapping for products
-  const colorMap = {};
-  aggregatedData.forEach((product, i) => {
-    colorMap[product.name] = colors[i % colors.length];
-  });
-
-  // Add bubbles
-  const bubbles = g.selectAll(".bubble")
-    .data(aggregatedData)
-    .enter()
-    .append("circle")
-    .attr("class", "bubble")
-    .attr("cx", d => d.x)
-    .attr("cy", d => d.y)
-    .attr("r", d => sizeScale(d.totalProfit))
-    .attr("fill", d => colorMap[d.name])
-    .attr("opacity", 0.8)
-    .attr("stroke", "#fff")
-    .attr("stroke-width", 2)
-    .style("cursor", "pointer")
-    .on("mouseover", function(event, d) {
-      d3.select(this).attr("opacity", 1).attr("stroke-width", 3);
-      tooltip.transition().duration(200).style("opacity", 1);
-      
-      const tooltipContent = `
-        <strong>${d.name}</strong><br/>
-        <span style="color: #4CAF50;">Cumulative Profit: $${d.totalProfit.toLocaleString()}</span><br/>
-        Total Revenue: $${d.totalRevenue.toLocaleString()}<br/>
-        Units Sold: ${d.totalUnitsSold.toLocaleString()}<br/>
-        Category: ${d.category}
-      `;
-      
-      tooltip.html(tooltipContent)
-        .style("left", (event.offsetX + 10) + "px")
-        .style("top", (event.offsetY - 10) + "px");
-    })
-    .on("mouseout", function(d) {
-      d3.select(this).attr("opacity", 0.8).attr("stroke-width", 2);
-      tooltip.transition().duration(500).style("opacity", 0);
-    });
-
-  // Add product name labels on bubbles
-  g.selectAll(".bubble-label")
-    .data(aggregatedData)
-    .enter()
-    .append("text")
-    .attr("class", "bubble-label")
-    .attr("x", d => d.x)
-    .attr("y", d => d.y - 3)
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "middle")
-    .style("font-size", d => {
-      const radius = sizeScale(d.totalProfit);
-      return `${Math.max(12, Math.min(22, radius / 3))}px`; // Even larger font sizes for bigger bubbles
-    })
-    .style("font-weight", "bold")
-    .style("fill", "#fff")
-    .style("text-shadow", "1px 1px 3px rgba(0,0,0,0.8)")
-    .style("pointer-events", "none")
-    .text(d => {
-      // Truncate long product names based on bubble size - more generous with larger bubbles
-      const radius = sizeScale(d.totalProfit);
-      const maxLength = Math.max(6, Math.floor(radius / 3)); // More characters allowed for larger bubbles
-      return d.name.length > maxLength ? d.name.substring(0, maxLength - 2) + "..." : d.name;
-    });
-
-  // Add profit values on bubbles (second line)
-  g.selectAll(".profit-label")
-    .data(aggregatedData)
-    .enter()
-    .append("text")
-    .attr("class", "profit-label")
-    .attr("x", d => d.x)
-    .attr("y", d => d.y + 12)
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "middle")
-    .style("font-size", d => {
-      const radius = sizeScale(d.totalProfit);
-      return `${Math.max(10, Math.min(16, radius / 4))}px`; // Larger font sizes for profit labels in bigger bubbles
-    })
-    .style("font-weight", "normal")
-    .style("fill", "#fff")
-    .style("text-shadow", "1px 1px 2px rgba(0,0,0,0.8)")
-    .style("pointer-events", "none")
-    .text(d => {
-      const profit = d.totalProfit;
-      if (profit >= 1000000) {
-        return `$${(profit / 1000000).toFixed(1)}M`;
-      } else if (profit >= 1000) {
-        return `$${(profit / 1000).toFixed(0)}k`;
-      } else {
-        return `$${profit.toLocaleString()}`;
-      }
-    });
-
-  // Title and subtitle removed to maximize chart space for bubbles
-
-  // Add legend showing top products - positioned at the bottom to avoid overlap
-  const numLegendItems = Math.min(6, aggregatedData.length); // Limit to 6 items
-  const topProducts = aggregatedData.slice(0, numLegendItems);
-  const legendHeight = Math.ceil(numLegendItems / 3) * 18 + 10; // Calculate legend height
-  const legendY = height - legendHeight - 10; // Position above bottom margin
-  
-  const legend = svg.append("g")
-    .attr("class", "product-legend")
-    .attr("transform", `translate(10, ${legendY})`);
-
-  // Add legend background for better visibility
-  legend.append("rect")
-    .attr("x", -5)
-    .attr("y", -5)
-    .attr("width", width - 10)
-    .attr("height", legendHeight)
-    .attr("fill", "rgba(255, 255, 255, 0.9)")
-    .attr("stroke", "#ddd")
-    .attr("stroke-width", 1)
-    .attr("rx", 4);
-
-  const legendItems = legend.selectAll(".legend-item")
-    .data(topProducts)
-    .enter()
-    .append("g")
-    .attr("class", "legend-item")
-    .attr("transform", (d, i) => {
-      const itemsPerRow = 3;
-      const col = i % itemsPerRow;
-      const row = Math.floor(i / itemsPerRow);
-      const colWidth = (width - 30) / itemsPerRow;
-      return `translate(${col * colWidth}, ${row * 16 + 5})`;
-    });
-
-  legendItems.append("circle")
-    .attr("cx", 6)
-    .attr("cy", 6)
-    .attr("r", 4)
-    .attr("fill", d => colorMap[d.name]);
-
-  legendItems.append("text")
-    .attr("x", 15)
-    .attr("y", 6)
-    .attr("dy", "0.35em")
-    .style("font-size", "8px")
-    .style("fill", "#333")
-    .style("font-weight", "500")
-    .text(d => {
-      const maxLength = Math.floor((width - 30) / 3 / 6); // Adjust based on available space
-      const name = d.name.length > maxLength ? d.name.substring(0, maxLength - 2) + "..." : d.name;
-      const profit = d.totalProfit >= 1000000 ? `$${(d.totalProfit / 1000000).toFixed(1)}M` : 
-                    d.totalProfit >= 1000 ? `$${(d.totalProfit / 1000).toFixed(0)}k` : `$${d.totalProfit}`;
-      return `${name} (${profit})`;
-    });
-}
-
+// --- Main Dashboard Component ---
 function Dashboard({ token, persona, loginName }) {
   const [bookmarkName, setBookmarkName] = useState("");
   const [selectedBookmark, setSelectedBookmark] = useState("");
@@ -1173,6 +1014,7 @@ const bubbleRef = useD3Chart(
     const doc = new jsPDF("p", "pt", "a4");
     const margin = 40;
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
     // Page 1: Charts
     doc.setFont("helvetica", "normal");
@@ -1183,10 +1025,13 @@ const bubbleRef = useD3Chart(
       margin
     );
 
-    const chartWidth = 120;
-    const chartHeight = 100;
-    const chartSpacing = 20;
-    const startY = margin + 20;
+    // Chart dimensions - larger since we're doing one per row
+    const chartWidth = 300;
+    const chartHeight = 200;
+    const chartSpacing = 30;
+    const titleHeight = 20;
+    let currentY = margin + 30;
+
     const chartRefs = [lineRef, barRef, pieRef, doughnutRef];
     const chartTitles = [
       "Total Revenue Over Time",
@@ -1195,26 +1040,100 @@ const bubbleRef = useD3Chart(
       "Units Sold by Category",
     ];
 
-    // Calculate total width needed and center charts
-    const totalChartWidth = chartRefs.length * chartWidth + (chartRefs.length - 1) * chartSpacing;
-    let startX = (pageWidth - totalChartWidth) / 2;
+    // Center each chart horizontally
+    const chartX = (pageWidth - chartWidth) / 2;
 
     for (let i = 0; i < chartRefs.length; i++) {
       const chartRef = chartRefs[i];
       const title = chartTitles[i];
 
+      console.log(`Processing chart ${i}: ${title}`, chartRef);
+
+      // Check if we need a new page (leave space for chart + title + spacing)
+      if (currentY + chartHeight + titleHeight + chartSpacing > pageHeight - margin) {
+        doc.addPage();
+        currentY = margin;
+      }
+
       if (chartRef.current) {
         const svg = chartRef.current.querySelector("svg");
+        console.log(`SVG found for ${title}:`, svg);
+        
         if (svg) {
-          const chartImg = await svgToPngDataUrl(svg);
-          doc.addImage(chartImg, "PNG", startX, startY, chartWidth, chartHeight);
-          doc.text(title, startX + chartWidth / 2, startY + chartHeight + 15, { align: "center" });
-          startX += chartWidth + chartSpacing;
+          try {
+            console.log(`Converting ${title} to PNG...`);
+            const chartImg = await svgToPngDataUrl(svg);
+            console.log(`${title} conversion result:`, chartImg.substring(0, 50) + '...');
+            
+            // Add the chart image
+            doc.addImage(chartImg, "PNG", chartX, currentY, chartWidth, chartHeight);
+            
+            // Add the title below the chart
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.text(title, pageWidth / 2, currentY + chartHeight + 15, { align: "center" });
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(12);
+            
+            console.log(`${title} added to PDF successfully`);
+            
+            // Move to next row position
+            currentY += chartHeight + titleHeight + chartSpacing;
+            
+          } catch (error) {
+            console.error(`Error processing chart ${title}:`, error);
+            // Add a placeholder for failed charts
+            doc.setFillColor(240, 240, 240);
+            doc.rect(chartX, currentY, chartWidth, chartHeight, 'F');
+            doc.setTextColor(100, 100, 100);
+            doc.text('Chart Error', pageWidth / 2, currentY + chartHeight / 2, { align: "center" });
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.text(title, pageWidth / 2, currentY + chartHeight + 15, { align: "center" });
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            
+            // Move to next row position
+            currentY += chartHeight + titleHeight + chartSpacing;
+          }
+        } else {
+          console.warn(`No SVG found for ${title}`);
+          // Add a placeholder for missing SVG
+          doc.setFillColor(250, 250, 250);
+          doc.rect(chartX, currentY, chartWidth, chartHeight, 'F');
+          doc.setTextColor(150, 150, 150);
+          doc.text('No Chart', pageWidth / 2, currentY + chartHeight / 2, { align: "center" });
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(14);
+          doc.text(title, pageWidth / 2, currentY + chartHeight + 15, { align: "center" });
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(12);
+          doc.setTextColor(0, 0, 0);
+          
+          // Move to next row position
+          currentY += chartHeight + titleHeight + chartSpacing;
         }
+      } else {
+        console.warn(`Chart ref not available for ${title}`);
+        // Add a placeholder for missing chart ref
+        doc.setFillColor(250, 250, 250);
+        doc.rect(chartX, currentY, chartWidth, chartHeight, 'F');
+        doc.setTextColor(150, 150, 150);
+        doc.text('Chart Not Ready', pageWidth / 2, currentY + chartHeight / 2, { align: "center" });
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text(title, pageWidth / 2, currentY + chartHeight + 15, { align: "center" });
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        
+        // Move to next row position
+        currentY += chartHeight + titleHeight + chartSpacing;
       }
     }
     
-   // Page 2: Table
+   // Add a new page for the table
    doc.addPage();
    doc.setFont("helvetica", "normal");
    doc.setFontSize(10);
@@ -2097,6 +2016,7 @@ function PPDashboard({ token, persona, loginName }) {
     const doc = new jsPDF("p", "pt", "a4");
     const margin = 40;
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
     // Page 1: Charts
     doc.setFont("helvetica", "normal");
@@ -2107,10 +2027,13 @@ function PPDashboard({ token, persona, loginName }) {
       margin
     );
 
-    const chartWidth = 120;
-    const chartHeight = 100;
-    const chartSpacing = 20;
-    const startY = margin + 20;
+    // Chart dimensions - larger since we're doing one per row
+    const chartWidth = 300;
+    const chartHeight = 200;
+    const chartSpacing = 30;
+    const titleHeight = 20;
+    let currentY = margin + 30;
+
     const chartRefs = [lineRef, barRef, pieRef, doughnutRef];
     const chartTitles = [
       "Total Revenue Over Time",
@@ -2119,26 +2042,100 @@ function PPDashboard({ token, persona, loginName }) {
       "Units Sold by Category",
     ];
 
-    // Calculate total width needed and center charts
-    const totalChartWidth = chartRefs.length * chartWidth + (chartRefs.length - 1) * chartSpacing;
-    let startX = (pageWidth - totalChartWidth) / 2;
+    // Center each chart horizontally
+    const chartX = (pageWidth - chartWidth) / 2;
 
     for (let i = 0; i < chartRefs.length; i++) {
       const chartRef = chartRefs[i];
       const title = chartTitles[i];
 
+      console.log(`Processing chart ${i}: ${title}`, chartRef);
+
+      // Check if we need a new page (leave space for chart + title + spacing)
+      if (currentY + chartHeight + titleHeight + chartSpacing > pageHeight - margin) {
+        doc.addPage();
+        currentY = margin;
+      }
+
       if (chartRef.current) {
         const svg = chartRef.current.querySelector("svg");
+        console.log(`SVG found for ${title}:`, svg);
+        
         if (svg) {
-          const chartImg = await svgToPngDataUrl(svg);
-          doc.addImage(chartImg, "PNG", startX, startY, chartWidth, chartHeight);
-          doc.text(title, startX + chartWidth / 2, startY + chartHeight + 15, { align: "center" });
-          startX += chartWidth + chartSpacing;
+          try {
+            console.log(`Converting ${title} to PNG...`);
+            const chartImg = await svgToPngDataUrl(svg);
+            console.log(`${title} conversion result:`, chartImg.substring(0, 50) + '...');
+            
+            // Add the chart image
+            doc.addImage(chartImg, "PNG", chartX, currentY, chartWidth, chartHeight);
+            
+            // Add the title below the chart
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.text(title, pageWidth / 2, currentY + chartHeight + 15, { align: "center" });
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(12);
+            
+            console.log(`${title} added to PDF successfully`);
+            
+            // Move to next row position
+            currentY += chartHeight + titleHeight + chartSpacing;
+            
+          } catch (error) {
+            console.error(`Error processing chart ${title}:`, error);
+            // Add a placeholder for failed charts
+            doc.setFillColor(240, 240, 240);
+            doc.rect(chartX, currentY, chartWidth, chartHeight, 'F');
+            doc.setTextColor(100, 100, 100);
+            doc.text('Chart Error', pageWidth / 2, currentY + chartHeight / 2, { align: "center" });
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.text(title, pageWidth / 2, currentY + chartHeight + 15, { align: "center" });
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            
+            // Move to next row position
+            currentY += chartHeight + titleHeight + chartSpacing;
+          }
+        } else {
+          console.warn(`No SVG found for ${title}`);
+          // Add a placeholder for missing SVG
+          doc.setFillColor(250, 250, 250);
+          doc.rect(chartX, currentY, chartWidth, chartHeight, 'F');
+          doc.setTextColor(150, 150, 150);
+          doc.text('No Chart', pageWidth / 2, currentY + chartHeight / 2, { align: "center" });
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(14);
+          doc.text(title, pageWidth / 2, currentY + chartHeight + 15, { align: "center" });
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(12);
+          doc.setTextColor(0, 0, 0);
+          
+          // Move to next row position
+          currentY += chartHeight + titleHeight + chartSpacing;
         }
+      } else {
+        console.warn(`Chart ref not available for ${title}`);
+        // Add a placeholder for missing chart ref
+        doc.setFillColor(250, 250, 250);
+        doc.rect(chartX, currentY, chartWidth, chartHeight, 'F');
+        doc.setTextColor(150, 150, 150);
+        doc.text('Chart Not Ready', pageWidth / 2, currentY + chartHeight / 2, { align: "center" });
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text(title, pageWidth / 2, currentY + chartHeight + 15, { align: "center" });
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        
+        // Move to next row position
+        currentY += chartHeight + titleHeight + chartSpacing;
       }
     }
     
-   // Page 2: Table
+   // Add a new page for the table
    doc.addPage();
    doc.setFont("helvetica", "normal");
    doc.setFontSize(10);
@@ -2384,7 +2381,7 @@ function PPDashboard({ token, persona, loginName }) {
                 <Col md={2} sm={4} xs={6} className="mb-2">
                   <Form.Check
                     type="checkbox"
-                    id="lineChart-pp"
+                    id="lineChart"
                     label="Revenue Over Time"
                     checked={selectedCharts.lineChart}
                     onChange={() => handleChartSelection('lineChart')}
@@ -2393,7 +2390,7 @@ function PPDashboard({ token, persona, loginName }) {
                 <Col md={2} sm={4} xs={6} className="mb-2">
                   <Form.Check
                     type="checkbox"
-                    id="barChart-pp"
+                    id="barChart"
                     label="Revenue by Product"
                     checked={selectedCharts.barChart}
                     onChange={() => handleChartSelection('barChart')}
@@ -2402,7 +2399,7 @@ function PPDashboard({ token, persona, loginName }) {
                 <Col md={2} sm={4} xs={6} className="mb-2">
                   <Form.Check
                     type="checkbox"
-                    id="pieChart-pp"
+                    id="pieChart"
                     label="Revenue by Store"
                     checked={selectedCharts.pieChart}
                     onChange={() => handleChartSelection('pieChart')}
@@ -2411,7 +2408,7 @@ function PPDashboard({ token, persona, loginName }) {
                 <Col md={2} sm={4} xs={6} className="mb-2">
                   <Form.Check
                     type="checkbox"
-                    id="doughnutChart-pp"
+                    id="doughnutChart"
                     label="Units by Category"
                     checked={selectedCharts.doughnutChart}
                     onChange={() => handleChartSelection('doughnutChart')}
@@ -2420,7 +2417,7 @@ function PPDashboard({ token, persona, loginName }) {
                 <Col md={2} sm={4} xs={6} className="mb-2">
                   <Form.Check
                     type="checkbox"
-                    id="treemapChart-pp"
+                    id="treemapChart"
                     label="Revenue Treemap"
                     checked={selectedCharts.treemapChart}
                     onChange={() => handleChartSelection('treemapChart')}
@@ -2429,8 +2426,8 @@ function PPDashboard({ token, persona, loginName }) {
                 <Col md={2} sm={4} xs={6} className="mb-2">
                   <Form.Check
                     type="checkbox"
-                    id="histogramChart-pp"
-                    label="Revenue Distribution"
+                    id="histogramChart"
+                    label="Revenue Histogram"
                     checked={selectedCharts.histogramChart}
                     onChange={() => handleChartSelection('histogramChart')}
                   />
@@ -2438,7 +2435,7 @@ function PPDashboard({ token, persona, loginName }) {
                 <Col md={2} sm={4} xs={6} className="mb-2">
                   <Form.Check
                     type="checkbox"
-                    id="bubbleChart-pp"
+                    id="bubbleChart"
                     label="Bubble Chart"
                     checked={selectedCharts.bubbleChart}
                     onChange={() => handleChartSelection('bubbleChart')}
@@ -2447,7 +2444,7 @@ function PPDashboard({ token, persona, loginName }) {
                 <Col md={2} sm={4} xs={6} className="mb-2">
                   <Form.Check
                     type="checkbox"
-                    id="dataTable-pp"
+                    id="dataTable"
                     label="Data Table"
                     checked={selectedCharts.dataTable}
                     onChange={() => handleChartSelection('dataTable')}
@@ -2995,4 +2992,200 @@ function drawTreemap(container, data) {
   svg.on("click", () => {
     zoomOut();
   });
+}
+
+function drawBubbleChart(container, { data, labelKey = "id" }) {
+  const width = (container.offsetWidth || 320) * 0.99;
+  const height = (container.offsetHeight || 200) * 0.99;
+
+  d3.select(container).selectAll("*").remove();
+
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("width", "99%")
+    .attr("height", "99%")
+    .attr("viewBox", [0, 0, width, height])
+    .attr("preserveAspectRatio", "xMinYMin meet")
+    .style("display", "block");
+
+  // Process data - handle both formats
+  let processedData;
+  if (Array.isArray(data) && data.length > 0) {
+    if (data[0].hasOwnProperty('revenue') && data[0].hasOwnProperty('profit')) {
+      // Format from Dashboard component: { id, revenue, profit, units_sold }
+      processedData = data.map(d => ({
+        name: d.id || d.name || "Unknown",
+        x: d.revenue || 0,
+        y: d.profit || 0,
+        size: Math.max(d.units_sold || 0, 10) // Minimum size of 10
+      }));
+    } else {
+      // Format from PPDashboard component: raw data with product_name
+      const grouped = d3.group(data, d => d[labelKey] || d.product_name || d.name);
+      processedData = Array.from(grouped, ([name, values]) => ({
+        name: name || "Unknown",
+        x: d3.sum(values, d => Number(d.revenue) || 0),
+        y: d3.sum(values, d => Number(d.profit) || 0),
+        size: Math.max(d3.sum(values, d => Number(d.units_sold) || 0), 10)
+      }));
+    }
+  } else {
+    processedData = [];
+  }
+
+  if (processedData.length === 0) {
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", height / 2)
+      .attr("text-anchor", "middle")
+      .style("font-size", "14px")
+      .style("fill", "#666")
+      .text("No data available");
+    return;
+  }
+
+  // Set up scales
+  const xScale = d3.scaleLinear()
+    .domain(d3.extent(processedData, d => d.x))
+    .range([50, width - 50])
+    .nice();
+
+  const yScale = d3.scaleLinear()
+    .domain(d3.extent(processedData, d => d.y))
+    .range([height - 50, 50])
+    .nice();
+
+  const sizeScale = d3.scaleSqrt()
+    .domain(d3.extent(processedData, d => d.size))
+    .range([5, 30]);
+
+  const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+
+  // Add axes
+  const xAxis = d3.axisBottom(xScale).tickFormat(d3.format(".2s"));
+  const yAxis = d3.axisLeft(yScale).tickFormat(d3.format(".2s"));
+
+  svg.append("g")
+    .attr("transform", `translate(0, ${height - 50})`)
+    .call(xAxis)
+    .style("font-size", "11px");
+
+  svg.append("g")
+    .attr("transform", `translate(50, 0)`)
+    .call(yAxis)
+    .style("font-size", "11px");
+
+  // Add axis labels
+  svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", height - 10)
+    .attr("text-anchor", "middle")
+    .style("font-size", "12px")
+    .style("font-weight", "bold")
+    .text("Revenue");
+
+  svg.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("y", 15)
+    .attr("x", 0 - (height / 2))
+    .attr("text-anchor", "middle")
+    .style("font-size", "12px")
+    .style("font-weight", "bold")
+    .text("Profit");
+
+  // Create bubbles
+  const bubbles = svg.selectAll(".bubble")
+    .data(processedData)
+    .enter()
+    .append("g")
+    .attr("class", "bubble");
+
+  bubbles.append("circle")
+    .attr("cx", d => xScale(d.x))
+    .attr("cy", d => yScale(d.y))
+    .attr("r", d => sizeScale(d.size))
+    .style("fill", d => colorScale(d.name))
+    .style("opacity", 0.7)
+    .style("stroke", "#fff")
+    .style("stroke-width", 2);
+
+  // Add labels
+  bubbles.append("text")
+    .attr("x", d => xScale(d.x))
+    .attr("y", d => yScale(d.y))
+    .attr("text-anchor", "middle")
+    .attr("dy", "0.35em")
+    .style("font-size", "10px")
+    .style("font-weight", "bold")
+    .style("fill", "#333")
+    .style("pointer-events", "none")
+    .text(d => {
+      const name = d.name || "";
+      return name.length > 8 ? name.substring(0, 8) + "..." : name;
+    });
+
+  // Add legend
+  const legend = svg.append("g")
+    .attr("class", "legend")
+    .attr("transform", `translate(${width - 150}, 20)`);
+
+  legend.append("text")
+    .attr("x", 0)
+    .attr("y", 0)
+    .style("font-size", "11px")
+    .style("font-weight", "bold")
+    .text("Product Legend:");
+
+  const legendItems = legend.selectAll(".legend-item")
+    .data(processedData.slice(0, 5)) // Show only first 5 items to avoid overlap
+    .enter()
+    .append("g")
+    .attr("class", "legend-item")
+    .attr("transform", (d, i) => `translate(0, ${(i + 1) * 18})`);
+
+  legendItems.append("circle")
+    .attr("cx", 6)
+    .attr("cy", 0)
+    .attr("r", 6)
+    .style("fill", d => colorScale(d.name));
+
+  legendItems.append("text")
+    .attr("x", 16)
+    .attr("y", 0)
+    .attr("dy", "0.35em")
+    .style("font-size", "10px")
+    .text(d => {
+      const name = d.name || "";
+      return name.length > 12 ? name.substring(0, 12) + "..." : name;
+    });
+
+  // Add tooltip functionality
+  const tooltip = d3.select("body")
+    .append("div")
+    .style("position", "absolute")
+    .style("background", "rgba(0, 0, 0, 0.8)")
+    .style("color", "white")
+    .style("padding", "8px")
+    .style("border-radius", "4px")
+    .style("font-size", "12px")
+    .style("pointer-events", "none")
+    .style("opacity", 0);
+
+  bubbles.on("mouseover", function(event, d) {
+    tooltip.transition().duration(200).style("opacity", 0.9);
+    tooltip.html(`
+      <strong>${d.name}</strong><br/>
+      Revenue: $${d3.format(",.0f")(d.x)}<br/>
+      Profit: $${d3.format(",.0f")(d.y)}<br/>
+      Units Sold: ${d3.format(",.0f")(d.size)}
+    `)
+    .style("left", (event.pageX + 10) + "px")
+    .style("top", (event.pageY - 28) + "px");
+  })
+  .on("mouseout", function() {
+    tooltip.transition().duration(500).style("opacity", 0);
+  });
+
+  // Clean up tooltip on container destroy
+  container.__tooltip = tooltip;
 }
