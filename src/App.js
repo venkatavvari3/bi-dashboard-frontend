@@ -694,6 +694,7 @@ function Dashboard({ token, persona, loginName }) {
       doughnutChart: selectAll,
       treemapChart: selectAll,
       histogramChart: selectAll,
+      bubbleChart: selectAll,
       dataTable: selectAll
     });
     // Re-rendering is handled by useEffect when selectedCharts changes
@@ -1461,7 +1462,7 @@ if (loading) return <Spinner animation="border" />;
             <Form.Check
               type="checkbox"
               id="bubbleChart"
-              label="Bubble Chart"
+              label="Cumulative Profit by Product"
               checked={selectedCharts.bubbleChart}
               onChange={() => handleChartSelection('bubbleChart')}
             />
@@ -1832,8 +1833,12 @@ function PPDashboard({ token, persona, loginName }) {
       const profit = productRows.reduce((sum, row) => sum + Number(row.profit), 0);
       const unitsSold = productRows.reduce((sum, row) => sum + Number(row.units_sold), 0);
       
+      // Get the actual product name from the first row (all rows have same product_name for same product_id)
+      const productName = productRows.length > 0 ? productRows[0].product_name : productId;
+      
       return {
         id: productId,
+        name: productName,
         revenue,
         profit,
         units_sold: unitsSold
@@ -2436,7 +2441,7 @@ function PPDashboard({ token, persona, loginName }) {
                   <Form.Check
                     type="checkbox"
                     id="bubbleChart"
-                    label="Bubble Chart"
+                    label="Cumulative Profit by Product"
                     checked={selectedCharts.bubbleChart}
                     onChange={() => handleChartSelection('bubbleChart')}
                   />
@@ -3011,23 +3016,36 @@ function drawBubbleChart(container, { data, labelKey = "id" }) {
   // Process data - handle both formats
   let processedData;
   if (Array.isArray(data) && data.length > 0) {
-    if (data[0].hasOwnProperty('revenue') && data[0].hasOwnProperty('profit')) {
-      // Format from Dashboard component: { id, revenue, profit, units_sold }
-      processedData = data.map(d => ({
-        name: d.id || d.name || "Unknown",
-        x: d.revenue || 0,
-        y: d.profit || 0,
-        size: Math.max(d.units_sold || 0, 10) // Minimum size of 10
-      }));
+    if (data[0].hasOwnProperty('id') && data[0].hasOwnProperty('name') && !data[0].hasOwnProperty('product_name')) {
+      // Format from Pizzeria Dashboard component: { id, name, revenue, profit, units_sold }
+      // Group by name (treat name as product_name) and calculate cumulative values
+      const grouped = d3.group(data, d => d.name);
+      processedData = Array.from(grouped, ([productName, items]) => {
+        const cumulativeProfit = d3.sum(items, d => Number(d.profit) || 0);
+        const cumulativeRevenue = d3.sum(items, d => Number(d.revenue) || 0);
+        
+        return {
+          name: productName || "Unknown Product",
+          value: Math.max(cumulativeProfit, 1), // Bubble size corresponds to cumulative profit
+          revenue: cumulativeRevenue,
+          profit: cumulativeProfit
+        };
+      });
     } else {
-      // Format from PPDashboard component: raw data with product_name
-      const grouped = d3.group(data, d => d[labelKey] || d.product_name || d.name);
-      processedData = Array.from(grouped, ([name, values]) => ({
-        name: name || "Unknown",
-        x: d3.sum(values, d => Number(d.revenue) || 0),
-        y: d3.sum(values, d => Number(d.profit) || 0),
-        size: Math.max(d3.sum(values, d => Number(d.units_sold) || 0), 10)
-      }));
+      // Format from PPDashboard component: raw transaction data with product_name
+      // Group by product_name and calculate cumulative values
+      const grouped = d3.group(data, d => d.product_name);
+      processedData = Array.from(grouped, ([productName, transactions]) => {
+        const cumulativeProfit = d3.sum(transactions, d => Number(d.profit) || 0);
+        const cumulativeRevenue = d3.sum(transactions, d => Number(d.revenue) || 0);
+        
+        return {
+          name: productName || "Unknown Product",
+          value: Math.max(cumulativeProfit, 1), // Bubble size corresponds to cumulative profit
+          revenue: cumulativeRevenue,
+          profit: cumulativeProfit
+        };
+      });
     }
   } else {
     processedData = [];
@@ -3044,120 +3062,69 @@ function drawBubbleChart(container, { data, labelKey = "id" }) {
     return;
   }
 
-  // Set up scales
-  const xScale = d3.scaleLinear()
-    .domain(d3.extent(processedData, d => d.x))
-    .range([50, width - 50])
-    .nice();
+  // Create bubble pack layout
+  const pack = d3.pack()
+    .size([width - 20, height - 20])
+    .padding(3);
 
-  const yScale = d3.scaleLinear()
-    .domain(d3.extent(processedData, d => d.y))
-    .range([height - 50, 50])
-    .nice();
+  const root = d3.hierarchy({ children: processedData })
+    .sum(d => d.value);
 
-  const sizeScale = d3.scaleSqrt()
-    .domain(d3.extent(processedData, d => d.size))
-    .range([5, 30]);
+  const nodes = pack(root).leaves();
 
   const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
-  // Add axes
-  const xAxis = d3.axisBottom(xScale).tickFormat(d3.format(".2s"));
-  const yAxis = d3.axisLeft(yScale).tickFormat(d3.format(".2s"));
-
-  svg.append("g")
-    .attr("transform", `translate(0, ${height - 50})`)
-    .call(xAxis)
-    .style("font-size", "11px");
-
-  svg.append("g")
-    .attr("transform", `translate(50, 0)`)
-    .call(yAxis)
-    .style("font-size", "11px");
-
-  // Add axis labels
-  svg.append("text")
-    .attr("x", width / 2)
-    .attr("y", height - 10)
-    .attr("text-anchor", "middle")
-    .style("font-size", "12px")
-    .style("font-weight", "bold")
-    .text("Revenue");
-
-  svg.append("text")
-    .attr("transform", "rotate(-90)")
-    .attr("y", 15)
-    .attr("x", 0 - (height / 2))
-    .attr("text-anchor", "middle")
-    .style("font-size", "12px")
-    .style("font-weight", "bold")
-    .text("Profit");
+  // Create container group with offset for padding
+  const g = svg.append("g")
+    .attr("transform", "translate(10, 10)");
 
   // Create bubbles
-  const bubbles = svg.selectAll(".bubble")
-    .data(processedData)
+  const bubbles = g.selectAll(".bubble")
+    .data(nodes)
     .enter()
     .append("g")
-    .attr("class", "bubble");
+    .attr("class", "bubble")
+    .attr("transform", d => `translate(${d.x}, ${d.y})`);
 
   bubbles.append("circle")
-    .attr("cx", d => xScale(d.x))
-    .attr("cy", d => yScale(d.y))
-    .attr("r", d => sizeScale(d.size))
-    .style("fill", d => colorScale(d.name))
-    .style("opacity", 0.7)
+    .attr("r", d => d.r)
+    .style("fill", d => colorScale(d.data.name))
+    .style("opacity", 0.8)
     .style("stroke", "#fff")
     .style("stroke-width", 2);
 
-  // Add labels
+  // Add labels inside bubbles
   bubbles.append("text")
-    .attr("x", d => xScale(d.x))
-    .attr("y", d => yScale(d.y))
     .attr("text-anchor", "middle")
-    .attr("dy", "0.35em")
-    .style("font-size", "10px")
+    .attr("dy", "-0.2em")
+    .style("font-size", d => Math.min(d.r / 3, 12) + "px")
     .style("font-weight", "bold")
     .style("fill", "#333")
     .style("pointer-events", "none")
     .text(d => {
-      const name = d.name || "";
-      return name.length > 8 ? name.substring(0, 8) + "..." : name;
+      const name = d.data.name || "";
+      const maxLength = Math.floor(d.r / 4);
+      return name.length > maxLength ? name.substring(0, maxLength) + "..." : name;
     });
 
-  // Add legend
-  const legend = svg.append("g")
-    .attr("class", "legend")
-    .attr("transform", `translate(${width - 150}, 20)`);
+  // Add profit value inside bubbles
+  bubbles.append("text")
+    .attr("text-anchor", "middle")
+    .attr("dy", "1em")
+    .style("font-size", d => Math.min(d.r / 4, 10) + "px")
+    .style("fill", "#666")
+    .style("pointer-events", "none")
+    .text(d => "$" + d3.format(".2s")(d.data.profit));
 
-  legend.append("text")
-    .attr("x", 0)
-    .attr("y", 0)
-    .style("font-size", "11px")
-    .style("font-weight", "bold")
-    .text("Product Legend:");
-
-  const legendItems = legend.selectAll(".legend-item")
-    .data(processedData.slice(0, 5)) // Show only first 5 items to avoid overlap
-    .enter()
-    .append("g")
-    .attr("class", "legend-item")
-    .attr("transform", (d, i) => `translate(0, ${(i + 1) * 18})`);
-
-  legendItems.append("circle")
-    .attr("cx", 6)
-    .attr("cy", 0)
-    .attr("r", 6)
-    .style("fill", d => colorScale(d.name));
-
-  legendItems.append("text")
-    .attr("x", 16)
-    .attr("y", 0)
-    .attr("dy", "0.35em")
-    .style("font-size", "10px")
-    .text(d => {
-      const name = d.name || "";
-      return name.length > 12 ? name.substring(0, 12) + "..." : name;
-    });
+  // Add title
+  // svg.append("text")
+  //   .attr("x", width / 2)
+  //   .attr("y", 20)
+  //   .attr("text-anchor", "middle")
+  //   .style("font-size", "14px")
+  //   .style("font-weight", "bold")
+  //   .style("fill", "#333")
+  //   .text("Profit by Product (Bubble Size = Profit)");
 
   // Add tooltip functionality
   const tooltip = d3.select("body")
@@ -3174,10 +3141,10 @@ function drawBubbleChart(container, { data, labelKey = "id" }) {
   bubbles.on("mouseover", function(event, d) {
     tooltip.transition().duration(200).style("opacity", 0.9);
     tooltip.html(`
-      <strong>${d.name}</strong><br/>
-      Revenue: $${d3.format(",.0f")(d.x)}<br/>
-      Profit: $${d3.format(",.0f")(d.y)}<br/>
-      Units Sold: ${d3.format(",.0f")(d.size)}
+      <strong>${d.data.name}</strong><br/>
+      Revenue: $${d3.format(",.0f")(d.data.revenue)}<br/>
+      Profit: $${d3.format(",.0f")(d.data.profit)}<br/>
+      Bubble Size: ${d3.format(",.0f")(d.data.value)}
     `)
     .style("left", (event.pageX + 10) + "px")
     .style("top", (event.pageY - 28) + "px");
