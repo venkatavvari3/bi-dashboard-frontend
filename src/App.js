@@ -159,6 +159,18 @@ function useD3Chart(drawFn, data, dependencies) {
 
 // --- Chart Drawing Functions (99% of parent size) ---
 function drawBarChart(container, { labels, values }) {
+  // Validate data before rendering
+  if (!labels || !values || labels.length === 0 || values.length === 0) {
+    d3.select(container).selectAll("*").remove();
+    d3.select(container)
+      .append("div")
+      .style("text-align", "center")
+      .style("padding", "20px")
+      .style("color", "#666")
+      .text("No data available for bar chart");
+    return;
+  }
+  
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
   const margin = { top: 24, right: 16, bottom: 44, left: 48 };
@@ -199,6 +211,18 @@ function drawBarChart(container, { labels, values }) {
 
 function drawPieChart(container, { labels, values, colors }) {
   console.log('Pie chart data:', { labels, values }); // Debug log
+  
+  // Validate data before rendering
+  if (!labels || !values || labels.length === 0 || values.length === 0) {
+    d3.select(container).selectAll("*").remove();
+    d3.select(container)
+      .append("div")
+      .style("text-align", "center")
+      .style("padding", "20px")
+      .style("color", "#666")
+      .text("No data available for pie chart");
+    return;
+  }
   
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
@@ -367,6 +391,18 @@ function drawPieChart(container, { labels, values, colors }) {
 }
 
 function drawLineChart(container, { labels, values }) {
+  // Validate data before rendering
+  if (!labels || !values || labels.length === 0 || values.length === 0) {
+    d3.select(container).selectAll("*").remove();
+    d3.select(container)
+      .append("div")
+      .style("text-align", "center")
+      .style("padding", "20px")
+      .style("color", "#666")
+      .text("No data available for line chart");
+    return;
+  }
+  
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
   const margin = { top: 24, right: 16, bottom: 44, left: 48 };
@@ -404,6 +440,18 @@ function drawLineChart(container, { labels, values }) {
 }
 
 function drawDoughnutChart(container, { labels, values, colors }) {
+  // Validate data before rendering
+  if (!labels || !values || labels.length === 0 || values.length === 0) {
+    d3.select(container).selectAll("*").remove();
+    d3.select(container)
+      .append("div")
+      .style("text-align", "center")
+      .style("padding", "20px")
+      .style("color", "#666")
+      .text("No data available for doughnut chart");
+    return;
+  }
+  
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
   const numItems = labels.length;
@@ -918,10 +966,16 @@ const bubbleRef = useD3Chart(
   useEffect(() => {
     axios.get(`${API_URL}/api/products`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setProducts(res.data))
-      .catch(() => setProducts([]));
+      .catch(error => {
+        console.error('Products API Error:', error);
+        setProducts([]);
+      });
     axios.get(`${API_URL}/api/stores`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => setStores(res.data))
-      .catch(() => setStores([]));
+      .catch(error => {
+        console.error('Stores API Error:', error);
+        setStores([]);
+      });
   }, [token]);
 
   // Fetch data
@@ -932,7 +986,18 @@ const bubbleRef = useD3Chart(
         setData(res.data);
         setError("");
       })
-      .catch(() => setError("Failed to fetch data"))
+      .catch(error => {
+        console.error('API Error:', error);
+        if (error.response?.status === 500) {
+          setError("Backend server error (500). Please check if the backend server is running and properly configured.");
+        } else if (error.response?.status === 503) {
+          setError("Backend service unavailable (503). The server may be down or overloaded.");
+        } else if (error.code === 'ECONNREFUSED') {
+          setError("Cannot connect to backend server. Please check if the server is running on the correct port.");
+        } else {
+          setError(`Failed to fetch data: ${error.message || 'Unknown error'}`);
+        }
+      })
       .finally(() => setLoading(false));
   };
 
@@ -1156,6 +1221,190 @@ const bubbleRef = useD3Chart(
     doc.save("dashboard_sales.pdf");
   };
 
+  // Helper function to generate email attachments based on format choice
+  const generateEmailAttachments = async (includeFormats = ['pdf', 'excel']) => {
+    console.log("generateEmailAttachments called with formats:", includeFormats);
+    const attachments = {};
+    
+    // Always include screenshot
+    console.log("Generating screenshot...");
+    const canvas = await html2canvas(document.body);
+    attachments.image = canvas.toDataURL("image/png");
+    console.log("Screenshot generated, size:", attachments.image.length);
+    
+    // Conditionally include PDF
+    if (includeFormats.includes('pdf')) {
+      console.log("Generating PDF...");
+      const doc = new jsPDF("p", "pt", "a4");
+      const margin = 40;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+      doc.text(
+        `Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`,
+        margin,
+        margin
+      );
+
+      const chartWidth = 300;
+      const chartHeight = 200;
+      const chartSpacing = 30;
+      const titleHeight = 20;
+      let currentY = margin + 30;
+
+      const selectedChartData = [];
+      if (selectedCharts.lineChart) selectedChartData.push({ ref: lineRef, title: "Total Revenue Over Time" });
+      if (selectedCharts.barChart) selectedChartData.push({ ref: barRef, title: "Revenue by Product" });
+      if (selectedCharts.pieChart) selectedChartData.push({ ref: pieRef, title: "Revenue by Store" });
+      if (selectedCharts.doughnutChart) selectedChartData.push({ ref: doughnutRef, title: "Units Sold by Category" });
+      if (selectedCharts.treemapChart) selectedChartData.push({ ref: treemapRef, title: "Revenue by Category and Product" });
+      if (selectedCharts.histogramChart) selectedChartData.push({ ref: histogramRef, title: "Revenue Distribution" });
+      if (selectedCharts.bubbleChart) selectedChartData.push({ ref: bubbleRef, title: "Cumulative Profit by Product" });
+
+      for (let i = 0; i < selectedChartData.length; i++) {
+        const { ref, title } = selectedChartData[i];
+        
+        if (ref.current) {
+          const svg = ref.current.querySelector("svg");
+          if (svg) {
+            try {
+              const dataUrl = await svgToPngDataUrl(svg, chartWidth, chartHeight);
+              
+              if (currentY + chartHeight + titleHeight > pageHeight - margin) {
+                doc.addPage();
+                currentY = margin;
+              }
+              
+              doc.setFontSize(10);
+              doc.text(title, margin, currentY);
+              currentY += titleHeight;
+              
+              doc.addImage(dataUrl, "PNG", margin, currentY, chartWidth, chartHeight);
+              currentY += chartHeight + chartSpacing;
+            } catch (error) {
+              console.error(`Error converting ${title} to image:`, error);
+            }
+          }
+        }
+      }
+
+      const pdfBlob = doc.output('blob');
+      console.log("PDF blob created, size:", pdfBlob.size);
+      attachments.pdf = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1];
+          console.log("PDF base64 generated, length:", base64.length);
+          resolve(base64);
+        };
+        reader.readAsDataURL(pdfBlob);
+      });
+      console.log("PDF generation completed");
+    }
+    
+    // Conditionally include Excel
+    if (includeFormats.includes('excel')) {
+      console.log("Generating Excel with two tabs...");
+      const workbook = new ExcelJS.Workbook();
+      
+      // Sheet 1: Dataset
+      const tableSheet = workbook.addWorksheet("Dataset");
+      tableSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
+      tableSheet.addRow([]); // Empty row
+
+      // Add table headers
+      if (filteredData.length > 0) {
+        tableSheet.addRow(Object.keys(filteredData[0])); // Header row
+        tableSheet.addRows(filteredData.map(Object.values)); // Data rows
+        console.log("Excel data added, rows:", filteredData.length);
+      } else {
+        console.log("No filtered data for Excel");
+      }
+
+      // Sheet 2: Charts
+      const chartSheet = workbook.addWorksheet("Visuals");
+      chartSheet.addRow([`Filters: Product = ${selectedProduct || "All"}, Store = ${selectedStore || "All"}`]);
+
+      const addChartToSheet = async (chartRef, title, colOffset) => {
+        if (chartRef.current) {
+          const svg = chartRef.current.querySelector("svg");
+          if (svg) {
+            try {
+              console.log(`Adding ${title} to Excel Visuals sheet...`);
+              const imgData = await svgToPngDataUrl(svg);
+              const imageId = workbook.addImage({
+                base64: imgData,
+                extension: "png",
+              });
+
+              const imageWidthInCols = 5; // Adjust based on image width and column width
+              const imageStartRow = 2;
+              const imageHeightInRows = 10;
+
+              // Add image
+              chartSheet.addImage(imageId, {
+                tl: { col: colOffset, row: imageStartRow - 1 },
+                ext: { width: 300, height: 200 },
+              });
+
+              // Merge cells below the image for the title
+              const titleRowNumber = imageStartRow + imageHeightInRows;
+              const startCol = colOffset + 1;
+              const endCol = colOffset + imageWidthInCols;
+
+              chartSheet.mergeCells(titleRowNumber, startCol, titleRowNumber, endCol);
+              const titleCell = chartSheet.getCell(titleRowNumber, startCol);
+              titleCell.value = title;
+              titleCell.alignment = { horizontal: "center" };
+              titleCell.font = { bold: true };
+              
+              console.log(`${title} added to Excel successfully`);
+            } catch (error) {
+              console.error(`Error adding ${title} to Excel:`, error);
+            }
+          }
+        }
+      };
+
+      // Use column offsets to place charts side by side - Include ALL selected charts like PDF
+      let colOffset = 0;
+      const selectedChartData = [];
+      if (selectedCharts.lineChart) selectedChartData.push({ ref: lineRef, title: "Total Revenue Over Time" });
+      if (selectedCharts.barChart) selectedChartData.push({ ref: barRef, title: "Revenue by Product" });
+      if (selectedCharts.pieChart) selectedChartData.push({ ref: pieRef, title: "Revenue by Store" });
+      if (selectedCharts.doughnutChart) selectedChartData.push({ ref: doughnutRef, title: "Units Sold by Category" });
+      if (selectedCharts.treemapChart) selectedChartData.push({ ref: treemapRef, title: "Revenue by Category and Product" });
+      if (selectedCharts.histogramChart) selectedChartData.push({ ref: histogramRef, title: "Revenue Distribution" });
+      if (selectedCharts.bubbleChart) selectedChartData.push({ ref: bubbleRef, title: "Cumulative Profit by Product" });
+
+      // Add all selected charts to Excel with proper spacing
+      for (const { ref, title } of selectedChartData) {
+        await addChartToSheet(ref, title, colOffset);
+        colOffset += 5; // Move to next column position
+      }
+
+      const excelBuffer = await workbook.xlsx.writeBuffer();
+      console.log("Excel buffer created with two tabs, size:", excelBuffer.byteLength);
+      // Convert ArrayBuffer to base64 string in browser-compatible way
+      const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      attachments.excel = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result.split(',')[1];
+          console.log("Excel base64 generated, length:", base64.length);
+          resolve(base64);
+        };
+        reader.readAsDataURL(blob);
+      });
+      console.log("Excel generation with two tabs completed");
+    }
+    
+    console.log("generateEmailAttachments completed with keys:", Object.keys(attachments));
+    return attachments;
+  };
+
   const handleEmailMe = async () => {
     if (!email) {
       alert("Please enter an email address.");
@@ -1163,21 +1412,41 @@ const bubbleRef = useD3Chart(
     }
 
     try {
-      const canvas = await html2canvas(document.body);
-      const imageData = canvas.toDataURL("image/png");
-
-      await axios.post(`${API_URL}/api/email_me`, {
+      console.log("Starting email attachment generation...");
+      // Generate email attachments
+      const attachments = await generateEmailAttachments(['pdf', 'excel']);
+      console.log("Email attachments generated successfully:", Object.keys(attachments));
+      console.log("Attachment sizes:", {
+        image: attachments.image ? attachments.image.length : 0,
+        pdf: attachments.pdf ? attachments.pdf.length : 0,
+        excel: attachments.excel ? attachments.excel.length : 0
+      });
+      
+      const emailData = {
         to: email,
-        message: "Please find attached dashboard",
-        image: imageData,
-      }, {
+        message: "Please find attached dashboard with PDF and Excel reports",
+        image: attachments.image,
+        pdf: attachments.pdf,
+        excel: attachments.excel,
+      };
+      
+      console.log("Sending email with data:", {
+        to: emailData.to,
+        message: emailData.message,
+        hasImage: !!emailData.image,
+        hasPdf: !!emailData.pdf,
+        hasExcel: !!emailData.excel
+      });
+      
+      await axios.post(`${API_URL}/api/email_me`, emailData, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      alert("Dashboard emailed!");
+      alert("Dashboard emailed with PDF and Excel attachments!");
       setShowEmailForm(false);
       setEmail("");
     } catch (e) {
+      console.error("Failed to send email:", e);
       alert("Failed to send email");
     }
   };
@@ -1185,17 +1454,36 @@ const bubbleRef = useD3Chart(
 
   
 const handleSubscribeSubmit = async () => {
+  if (!reportFormat) {
+    alert("Please select a report format.");
+    return;
+  }
+  
   try {
     const payload = {
       repeatFrequency,
       scheduledTime,
-      reportFormat,
+      reportFormat, // User's choice: 'pdf', 'excel', or 'both'
       email: loginName || "",  // use logged-in user email if available
     };
     await axios.post(`${API_URL}/api/schedule_report`, payload, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    alert("Subscription scheduled successfully!");
+    
+    let formatMessage = "";
+    switch(reportFormat) {
+      case "pdf":
+        formatMessage = "PDF reports";
+        break;
+      case "excel":
+        formatMessage = "Excel reports";
+        break;
+      case "both":
+        formatMessage = "both PDF and Excel reports";
+        break;
+    }
+    
+    alert(`Subscription scheduled successfully! You will receive ${formatMessage}.`);
     setShowSubscribeForm(false);
   } catch (error) {
     alert("Failed to schedule subscription.");
@@ -1249,6 +1537,7 @@ if (loading) return <Spinner animation="border" />;
         <Col lg={4} md={12} className="d-flex flex-column">
             {showSubscribeForm ? (
             <div className="mb-2">
+              <small className="text-muted mb-2 d-block">Scheduled reports will include screenshot plus your selected format(s)</small>
               <Form.Control
                 type="text"
                 placeholder="Repeat Frequency (e.g., daily, weekly)"
@@ -1269,8 +1558,9 @@ if (loading) return <Spinner animation="border" />;
                 size="sm"
               >
                 <option value="">Select Format</option>
-                <option value="pdf">PDF</option>
-                <option value="excel">Excel</option>
+                <option value="pdf">PDF Only</option>
+                <option value="excel">Excel Only</option>
+                <option value="both">Both PDF and Excel</option>
               </Form.Select>
               <div className="d-flex gap-1">
                 <Button onClick={handleSubscribeSubmit} size="sm" variant="success" className="flex-fill">
@@ -2169,22 +2459,63 @@ function PPDashboard({ token, persona, loginName }) {
     }
 
     try {
-      const canvas = await html2canvas(document.body);
-      const imageData = canvas.toDataURL("image/png");
-
+      // Generate email attachments
+      const attachments = await generateEmailAttachments(['pdf', 'excel']);
+      
       await axios.post(`${API_URL}/api/email_me`, {
         to: email,
-        message: "Please find attached dashboard",
-        image: imageData,
+        message: "Please find attached dashboard with PDF and Excel reports",
+        image: attachments.image,
+        pdf: attachments.pdf,
+        excel: attachments.excel,
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      alert("Dashboard emailed!");
+      alert("Dashboard emailed with PDF and Excel attachments!");
       setShowEmailForm(false);
       setEmail("");
     } catch (e) {
+      console.error("Failed to send email:", e);
       alert("Failed to send email");
+    }
+  };
+
+
+  const handleSubscribeSubmit = async () => {
+    if (!reportFormat) {
+      alert("Please select a report format.");
+      return;
+    }
+    
+    try {
+      const payload = {
+        repeatFrequency,
+        scheduledTime,
+        reportFormat, // User's choice: 'pdf', 'excel', or 'both'
+        email: loginName || "",  // use logged-in user email if available
+      };
+      await axios.post(`${API_URL}/api/schedule_report`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      let formatMessage = "";
+      switch(reportFormat) {
+        case "pdf":
+          formatMessage = "PDF reports";
+          break;
+        case "excel":
+          formatMessage = "Excel reports";
+          break;
+        case "both":
+          formatMessage = "both PDF and Excel reports";
+          break;
+      }
+      
+      alert(`Subscription scheduled successfully! You will receive ${formatMessage}.`);
+      setShowSubscribeForm(false);
+    } catch (error) {
+      alert("Failed to schedule subscription.");
     }
   };
 
@@ -2784,6 +3115,18 @@ export default function App() {
 
 // Histogram chart drawing function
 function drawHistogram(container, { data, bins = 10, xLabel = "Value", yLabel = "Frequency" }) {
+  // Validate data before rendering
+  if (!data || data.length === 0) {
+    d3.select(container).selectAll("*").remove();
+    d3.select(container)
+      .append("div")
+      .style("text-align", "center")
+      .style("padding", "20px")
+      .style("color", "#666")
+      .text("No data available for histogram");
+    return;
+  }
+  
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
   const margin = { top: 24, right: 16, bottom: 44, left: 48 };
@@ -2863,6 +3206,18 @@ function drawHistogram(container, { data, bins = 10, xLabel = "Value", yLabel = 
 }
 
 function drawTreemap(container, data) {
+  // Validate data before rendering
+  if (!data || data.length === 0) {
+    d3.select(container).selectAll("*").remove();
+    d3.select(container)
+      .append("div")
+      .style("text-align", "center")
+      .style("padding", "20px")
+      .style("color", "#666")
+      .text("No data available for treemap");
+    return;
+  }
+  
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
 
@@ -3000,6 +3355,18 @@ function drawTreemap(container, data) {
 }
 
 function drawBubbleChart(container, { data, labelKey = "id" }) {
+  // Validate data before rendering
+  if (!data || data.length === 0) {
+    d3.select(container).selectAll("*").remove();
+    d3.select(container)
+      .append("div")
+      .style("text-align", "center")
+      .style("padding", "20px")
+      .style("color", "#666")
+      .text("No data available for bubble chart");
+    return;
+  }
+  
   const width = (container.offsetWidth || 320) * 0.99;
   const height = (container.offsetHeight || 200) * 0.99;
 
